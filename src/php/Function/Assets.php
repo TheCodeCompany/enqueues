@@ -41,7 +41,7 @@ function asset_find_file_path( string $relative_path, string $file_name, string 
 
 	$file_path = '';
 
-	if ( function_exists( 'is_local' ) && is_local() && file_exists( $standard ) ) {
+	if ( is_local() && file_exists( $standard ) ) {
 		$file_path = "/{$theme_relative_path_and_file_name}.{$file_ext}";
 	} elseif ( file_exists( $minified ) ) {
 		$file_path = "/{$theme_relative_path_and_file_name}.min.{$file_ext}";
@@ -71,7 +71,7 @@ function display_maybe_missing_local_warning( string $path, string $message ): v
 	}
 
 	// Local development environment error.
-	if ( function_exists( 'is_local' ) && is_local() ) {
+	if ( is_local() ) {
 		wp_die( $message ); // phpcs:ignore
 	}
 }
