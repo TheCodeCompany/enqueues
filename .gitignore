@@ -1,1 +1,11 @@
+*~
+.DS_Store
+.svn
+.cvs
+*.bak
+*.swp
+Thumbs.db
+.htaccess
+.vscode
+
 !/build-tools/vendor/
