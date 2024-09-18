@@ -1,24 +1,28 @@
 {
-  "name": "enqueues/core",
-  "description": "Enqueues",
-  "version": "1.0.0",
-  "repositories": [
-		{
-			"type": "vcs",
-			"name": "thecodeco/wpmvc",
-			"url": "https://bitbucket.org/thecodeco/wpmvc.git"
-		}
-	],
-	"require": {
-		"php": ">=8.0.0",
-		"thecodeco/wpmvc": "dev-master"
-	},
-  "autoload": {
-    "files": [
-      "src/php/Function/AutoLoad.php"
+    "name": "enqueues/core",
+    "description": "Enqueues",
+    "version": "1.0.0",
+    "repositories": [
+        {
+            "type": "vcs",
+            "name": "thecodeco/wpmvc",
+            "url": "https://bitbucket.org/thecodeco/wpmvc.git"
+        }
     ],
-    "psr-4": {
-      "Enqueues\\": "src/php/"
+    "require": {
+        "php": ">=8.0.0",
+        "thecodeco/wpmvc": "dev-master"
+    },
+    "autoload": {
+        "files": [
+            "src/php/Function/AutoLoad.php"
+        ],
+        "psr-4": {
+            "Enqueues\\": "src/php/"
+        }
+    },
+    "archive": {
+        "exclude": [".gitignore"]
     }
-  }
 }
+  
