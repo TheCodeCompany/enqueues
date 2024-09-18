@@ -11,38 +11,52 @@ The Enqueues MU Plugin automates the process of loading CSS and JavaScript asset
 ## Directory Structure
 
 ```
-mu-plugins/
-└── enqueues/
-    ├── build-tools/
-    │   └── vendor/
+enqueues/
+    ├── composer.json
+    ├── composer.lock
+    ├── enqueues-bootstrap.php
     ├── src/
+    │   ├── js/
+    │   │   ├── enqueues-merge-theme-webpack-entries.js
+    │   │   └── enqueues-theme-webpack-entries.js
     │   ├── php/
+    │   │   ├── Controller/
+    │   │   │   ├── ThemeEnqueueJqueryController.php
+    │   │   │   └── ThemeEnqueueMainController.php
     │   │   ├── Function/
     │   │   │   ├── Assets.php
-    │   │   │   └── PageType.php
-    │   │   ├── ThemeEnqueueMainController.php
-    │   │   └── ThemeEnqueueJqueryController.php
-    │   └── js/
-    │       ├── enqueues-merge-theme-webpack-entries.js
-    │       └── enqueues-theme-webpack-entries.js
-    └── enqueues-bootstrap.php
+    │   │   │   ├── AutoLoad.php
+    │   │   │   ├── Cache.php
+    │   │   │   ├── Env.php
+    │   │   │   ├── PageType.php
+    │   │   │   └── String.php
+    │   │   └── Library/
+    │   │       └── EnqueueAssets.php
+    └── vendor/
 ```
 
 ## Installation
-1. Place the Plugin in the MU-Plugins Directory:
-    * Copy the enqueues directory to .
-	* Add a bootsrap file to automaticaly load the plugin. This is necessary until this plugin has been moved to a package.
-		```php
-		$data_layer_loader_file = __DIR__ . '/enqueues/enqueues-bootstrap.php';
 
-		if ( file_exists( $data_layer_loader_file ) ) {
-			require_once $data_layer_loader_file;
-		}
-		```
-    * The plugin will be automatically loaded by WordPress as it resides in the mu-plugins directory.
-
-1. Composer:
-    * Ensure the `vendor` directory is present and included in your repository, as the plugin depends on Composer packages.
+### Using Composer
+1. Add the repository to your project's `composer.json` file:
+    ```json
+    {
+      "repositories": [
+        {
+            "type": "vcs",
+            "url": "https://github.com/TheCodeCompany/enqueues.git"
+        }
+      ],
+      "require": {
+        "enqueues/core": "dev-main"
+      }
+    }
+    ```
+1. Run `composer install` to pull in the package.
+1. Ensure that `autoload.php` is being included in your project to automatically load the plugin:
+    ```php
+    require_once __DIR__ . '/vendor/autoload.php';
+    ```
 
 ## Usage
 ### Automatic Asset Loading
@@ -107,7 +121,8 @@ module.exports = {
 The Enqueues MU Plugin provides several filters to customize its behavior, allowing you to fine-tune asset loading, directories, and other settings:
 * `enqueues_move_jquery_to_footer`: Controls whether jQuery should be moved to the footer. Default: true.
 * `enqueues_theme_default_enqueue_asset_filename`: Customize the default asset filename when no specific file is found. Default: 'main'.
-* `enqueues_theme_allowed_page_types_and_templates`: Modify the array of allowed page types and templates for automatic asset loading. Default: array() (empty array).
+* `enqueues_theme_allowed_page_types_and_templates`: Modify the array of allowed page types and templates for automatic asset loading. Default: `[]` (empty array).
+* `enqueues_theme_skip_scan_directories`: Allows modification of the array of directories to skip during the template file scanning process. Default: `[ '/build-tools/', '/dist/', '/node_modules/', '/vendor/' ]`.
 * `enqueues_theme_css_src_dir`: Customize the directory path for CSS files relative to the theme root. Default: 'dist/css'.
 * `enqueues_theme_js_src_dir`: Customize the directory path for JS files relative to the theme root. Default: 'dist/js'.
 * `enqueues_render_css_inline`: Controls whether CSS assets should be rendered inline. Default: false.

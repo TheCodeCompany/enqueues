@@ -13,7 +13,7 @@ namespace Enqueues;
 /**
  * Load package.
  */
-$autoload_file = __DIR__ . '/build-tools/vendor/autoload.php';
+$autoload_file = __DIR__ . '/vendor/autoload.php';
 
 if ( file_exists( $autoload_file ) ) {
 
@@ -23,7 +23,7 @@ if ( file_exists( $autoload_file ) ) {
 		define( 'Enqueues\\APP_NAME', basename( __FILE__, '.php' ) );
 	}
 
-	$enqueues_app = new \Enqueues\Base\Core\Application(
+	$enqueues_app = new \WPMVC\Core\Application(
 		APP_NAME,
 		__DIR__,
 		[
@@ -37,7 +37,7 @@ if ( file_exists( $autoload_file ) ) {
 	/**
 	 * Variable Type Definition.
 	 *
-	 * @param \Enqueues\Base\Library\Config $enqueues_app_config The config for this app.
+	 * @param \WPMVC\Library\Config $enqueues_app_config The config for this app.
 	 */
 	$enqueues_app_config = $enqueues_app->get_config();
 
