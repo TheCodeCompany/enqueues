@@ -11,20 +11,28 @@ The Enqueues MU Plugin automates the process of loading CSS and JavaScript asset
 ## Directory Structure
 
 ```
-mu-plugins/
-└── enqueues/
+enqueues/
+    ├── composer.json
+    ├── composer.lock
+    ├── enqueues-bootstrap.php
     ├── src/
+    │   ├── js/
+    │   │   ├── enqueues-merge-theme-webpack-entries.js
+    │   │   └── enqueues-theme-webpack-entries.js
     │   ├── php/
+    │   │   ├── Controller/
+    │   │   │   ├── ThemeEnqueueJqueryController.php
+    │   │   │   └── ThemeEnqueueMainController.php
     │   │   ├── Function/
     │   │   │   ├── Assets.php
-    │   │   │   └── PageType.php
-    │   │   ├── ThemeEnqueueMainController.php
-    │   │   └── ThemeEnqueueJqueryController.php
-    │   └── js/
-    │       ├── enqueues-merge-theme-webpack-entries.js
-    │       └── enqueues-theme-webpack-entries.js
-    ├── vendor/   
-    └── enqueues-bootstrap.php
+    │   │   │   ├── AutoLoad.php
+    │   │   │   ├── Cache.php
+    │   │   │   ├── Env.php
+    │   │   │   ├── PageType.php
+    │   │   │   └── String.php
+    │   │   └── Library/
+    │   │       └── EnqueueAssets.php
+    └── vendor/
 ```
 
 ## Installation
@@ -113,7 +121,8 @@ module.exports = {
 The Enqueues MU Plugin provides several filters to customize its behavior, allowing you to fine-tune asset loading, directories, and other settings:
 * `enqueues_move_jquery_to_footer`: Controls whether jQuery should be moved to the footer. Default: true.
 * `enqueues_theme_default_enqueue_asset_filename`: Customize the default asset filename when no specific file is found. Default: 'main'.
-* `enqueues_theme_allowed_page_types_and_templates`: Modify the array of allowed page types and templates for automatic asset loading. Default: array() (empty array).
+* `enqueues_theme_allowed_page_types_and_templates`: Modify the array of allowed page types and templates for automatic asset loading. Default: `[]` (empty array).
+* `enqueues_theme_skip_scan_directories`: Allows modification of the array of directories to skip during the template file scanning process. Default: `[ '/build-tools/', '/dist/', '/node_modules/', '/vendor/' ]`.
 * `enqueues_theme_css_src_dir`: Customize the directory path for CSS files relative to the theme root. Default: 'dist/css'.
 * `enqueues_theme_js_src_dir`: Customize the directory path for JS files relative to the theme root. Default: 'dist/js'.
 * `enqueues_render_css_inline`: Controls whether CSS assets should be rendered inline. Default: false.
