@@ -15,6 +15,7 @@
     },
     "autoload": {
         "files": [
+            "enqueues-bootstrap.php",
             "src/php/Function/AutoLoad.php"
         ],
         "psr-4": {
