@@ -28,20 +28,27 @@ mu-plugins/
 ```
 
 ## Installation
-1. Place the Plugin in the MU-Plugins Directory:
-    * Copy the enqueues directory to .
-	* Add a bootsrap file to automaticaly load the plugin. This is necessary until this plugin has been moved to a package.
-		```php
-		$data_layer_loader_file = __DIR__ . '/enqueues/enqueues-bootstrap.php';
 
-		if ( file_exists( $data_layer_loader_file ) ) {
-			require_once $data_layer_loader_file;
-		}
-		```
-    * The plugin will be automatically loaded by WordPress as it resides in the mu-plugins directory.
-
-1. Composer:
-    * Ensure the `vendor` directory is present and included in your repository, as the plugin depends on Composer packages.
+### Using Composer
+1. Add the repository to your project's `composer.json` file:
+    ```json
+    {
+      "repositories": [
+        {
+            "type": "vcs",
+            "url": "https://github.com/TheCodeCompany/enqueues.git"
+        }
+      ],
+      "require": {
+        "enqueues/core": "dev-main"
+      }
+    }
+    ```
+1. Run `composer install` to pull in the package.
+1. Ensure that `autoload.php` is being included in your project to automatically load the plugin:
+    ```php
+    require_once __DIR__ . '/vendor/autoload.php';
+    ```
 
 ## Usage
 ### Automatic Asset Loading
