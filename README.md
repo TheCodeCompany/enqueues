@@ -13,8 +13,6 @@ The Enqueues MU Plugin automates the process of loading CSS and JavaScript asset
 ```
 mu-plugins/
 └── enqueues/
-    ├── build-tools/
-    │   └── vendor/
     ├── src/
     │   ├── php/
     │   │   ├── Function/
@@ -25,6 +23,7 @@ mu-plugins/
     │   └── js/
     │       ├── enqueues-merge-theme-webpack-entries.js
     │       └── enqueues-theme-webpack-entries.js
+    ├── vendor/   
     └── enqueues-bootstrap.php
 ```
 

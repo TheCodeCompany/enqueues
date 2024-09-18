@@ -221,6 +221,7 @@ class EnqueueAssets {
 	 * - This reduces I/O operations and improves page load performance.
 	 *
 	 * @param string $theme_directory The path to the theme directory.
+	 *
 	 * @return array List of template filenames (without extensions).
 	 */
 	protected function get_theme_template_files( string $theme_directory ): array {
@@ -244,9 +245,25 @@ class EnqueueAssets {
 			if ( $file->isFile() && 'php' === $file->getExtension() ) {
 				$file_path = $file->getPathname();
 
-				// Skip files in build-tools and dist directories.
-				if ( strpos( $file_path, '/build-tools/' ) !== false || strpos( $file_path, '/dist/' ) !== false ) {
-					continue;
+				$directories = [
+					'/build-tools/',
+					'/dist/',
+					'/node_modules/',
+					'/vendor/',
+				];
+
+				/**
+				 * Filters the array of directories to skip being scanned for template files.
+				 *
+				 * @param array $directories The array of directories to skip being scanned for template files.
+				 */
+				$directories = apply_filters( 'enqueues_theme_skip_scan_directories', $directories );
+				
+				// Skip files in the specified directories.
+				foreach ( $directories as $dir ) {
+					if ( strpos( $file_path, $dir ) !== false ) {
+						continue 2; // 'continue 2' to skip the current iteration of the outer loop, if applicable.
+					}
 				}
 
 				// Skip files ending with '.asset.php' or 'index.php'.

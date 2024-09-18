@@ -13,7 +13,7 @@ namespace Enqueues;
 /**
  * Load package.
  */
-$autoload_file = __DIR__ . '/build-tools/vendor/autoload.php';
+$autoload_file = __DIR__ . '/vendor/autoload.php';
 
 if ( file_exists( $autoload_file ) ) {
 
