@@ -249,3 +249,105 @@ function add_inline_asset_to_wp_footer( string $type, string $handle, string $ur
 		}
 	);
 }
+
+/**
+ * Renders an asset inline based on the specified type and asset details.
+ *
+ * This method handles the common functionality of rendering assets inline for both
+ * the document head and footer, reducing redundancy and improving maintainability.
+ *
+ * @param array $asset An associative array containing asset details like type, handle, url, version, and dependencies.
+ *
+ * @return void
+ */
+function render_asset_inline( $asset ) {
+
+	$type   = $asset['type'] ?? '';
+	$handle = $asset['handle'] ?? '';
+	$url    = $asset['url'] ?? '';
+	$file   = $asset['file'] ?? '';
+	$ver    = $asset['ver'] ?? '';
+	$deps   = $asset['deps'] ?? [];
+
+	// Skip if essential details are missing.
+	if ( ! $type || ! $handle || ! $url ) {
+		return;
+	}
+
+	// Use version if available.
+	$url        = $ver ? "{$url}?ver={$ver}" : $url;
+	$element_id = $ver ? "{$handle}-{$ver}" : $handle;
+
+	$content = fetch_asset_file_contents( $url, $file );
+
+	if ( ! $content ) {
+		return; // Skip if content couldn't be fetched.
+	}
+
+	// Output the inline style or script.
+	if ( $content && 'style' === $type ) {
+		?>
+		<style id="<?php echo esc_attr( $element_id ); ?>"><?php echo $content; // phpcs:ignore ?></style>
+		<?php
+	} elseif ( $content && 'script' === $type ) {
+		?>
+		<script id="<?php echo esc_attr( $element_id ); ?>" type="text/javascript"><?php echo $content; // phpcs:ignore ?></script>
+		<?php
+	}
+}
+
+/**
+ * Fetches the content of an asset from a given URL.
+ *
+ * Implements transient caching and soft error handling to optimize performance and user experience.
+ *
+ * @param string $url  The URL from which to fetch the asset content. Add Basic Auth if required. e.g. https://username:password@example.com.
+ * @param string $file The local file path to fetch the asset content from. Default is empty.
+ *
+ * @return false|string The content of the asset, or false on failure.
+ */
+function fetch_asset_file_contents( string $url, string $file = '' ): false|string {
+
+	$transient_key = 'inline_asset_' . md5( $url );
+	$transient_ttl = DAY_IN_SECONDS;
+	$content       = get_transient( $transient_key );
+
+	if ( false === $content ) {
+
+		// Get the content from a local file. Faster than HTTP request.
+		if ( $file ) {
+			$content = file_get_contents( $file ); // phpcs:ignore WordPressVIPMinimum.Performance.FetchingRemoteData.FileGetContentsUnknown
+		}
+
+		// Get the content via HTTP request. Slower than file_get_contents.
+		if ( ! $content ) {
+			$response = function_exists( 'vip_safe_wp_remote_get' ) ? vip_safe_wp_remote_get( $url ) : wp_remote_get( $url ); // phpcs:ignore
+
+			// Check if the response is an error.
+			if ( is_wp_error( $response ) ) {
+				// Local development environment error.
+				if ( function_exists( 'is_local' ) && is_local() ) {
+					wp_die( 'Error retrieving asset: ' . $response->get_error_message() ); // phpcs:ignore
+				}
+				return false;
+			}
+
+			// Check for the correct response code.
+			$response_code = wp_remote_retrieve_response_code( $response );
+			if ( 200 !== $response_code ) {
+				// Local development environment error for non-200 response.
+				if ( function_exists( 'is_local' ) && is_local() ) {
+					wp_die( 'Unexpected response code: ' . $response_code ); // phpcs:ignore
+				}
+				return false;
+			}
+
+			// Retrieve the body of the response.
+			$content = wp_remote_retrieve_body( $response );
+		}
+
+		set_transient( $transient_key, $content, $transient_ttl );
+	}
+
+	return $content;
+}
