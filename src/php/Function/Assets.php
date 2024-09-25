@@ -183,7 +183,7 @@ function get_asset_page_type_file_data(
  * that are to be rendered directly within the HTML head, bypassing the standard
  * WordPress enqueuing system. Useful for critical path CSS or inline JavaScript.
  *
- * IMPORTANT: Does not have dependency support, however it is rendered in later priority 999.
+ * IMPORTANT: This feature does not have dependency support, however it is rendered as late as possible.
  *
  * @param string          $type   The type of asset ('style' or 'script').
  * @param string          $handle Unique handle for the asset.
@@ -197,7 +197,7 @@ function get_asset_page_type_file_data(
 function add_inline_asset_to_wp_head( string $type, string $handle, string $url, string $file, null|string|int $ver, array $deps = [] ): void {
 
 	add_filter(
-		'enqueues_asset_inline_asset_to_wp_head',
+		'enqueues_wp_head_inline_asset',
 		function ( $assets ) use ( $type, $handle, $url, $file, $ver, $deps ) {
 			$assets[] = [
 				'type'   => $type,
@@ -220,7 +220,7 @@ function add_inline_asset_to_wp_head( string $type, string $handle, string $url,
  * that are to be rendered directly within the HTML head, bypassing the standard
  * WordPress enqueuing system. Useful for critical path CSS or inline JavaScript.
  *
- * IMPORTANT: Does not have dependency support, however it is rendered in later priority 999.
+ * IMPORTANT: This feature does not have dependency support, however it is rendered as late as possible.
  *
  * @param string          $type   The type of asset ('style' or 'script').
  * @param string          $handle Unique handle for the asset.
@@ -234,7 +234,7 @@ function add_inline_asset_to_wp_head( string $type, string $handle, string $url,
 function add_inline_asset_to_wp_footer( string $type, string $handle, string $url, string $file, null|string|int $ver, array $deps = [] ) {
 
 	add_filter(
-		'enqueues_asset_inline_asset_to_wp_footer',
+		'enqueues_wp_footer_inline_asset',
 		function ( $assets ) use ( $type, $handle, $url, $file, $ver, $deps ) {
 			$assets[] = [
 				'type'   => $type,

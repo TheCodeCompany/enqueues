@@ -7,6 +7,7 @@ The Enqueues MU Plugin automates the process of loading CSS and JavaScript asset
 * Fallback Mechanism: If no specific file is found for a page type, the plugin falls back to default assets (e.g., `main.css` and `main.js`).
 * Inline Asset Support: Supports rendering critical CSS/JS assets inline in wp_head or wp_footer.
 * Webpack Utility: Includes a utility for dynamically generating Webpack entry points for your theme’s JavaScript and SCSS files.
+* Inline Asset Registration: Easily register critical CSS and JS to be rendered inline within the `wp_head` or `wp_footer` via provided functions.
 
 ## Directory Structure
 
@@ -117,6 +118,35 @@ module.exports = {
 * You must always use enqueuesMergeThemeWebpackEntries() to merge dynamic and custom entries to ensure both sets of entries are handled correctly.
 * This approach works with both JavaScript and SCSS (or CSS) entries, combining everything into the final Webpack build configuration.
 
+### Inline Asset Registration
+The plugin allows you to register critical CSS or JS assets to be rendered directly within the `wp_head` or `wp_footer` tags using the following functions:
+
+#### `add_inline_asset_to_wp_head()`
+Registers an inline asset to be rendered in the head of the document. Useful for critical CSS or JS.
+
+**Parameters**:
+- `$type`: Asset type ('style' or 'script').
+- `$handle`: Unique identifier for the asset.
+- `$url`: Full URL of the asset.
+- `$file`: Full path to the asset file.
+- `$ver`: Version string for cache busting (optional).
+- `$deps`: Array of dependencies (optional).
+
+#### `add_inline_asset_to_wp_footer()`
+Registers an inline asset to be rendered in the footer of the document.
+
+**Parameters**:
+Same as `add_inline_asset_to_wp_head()`.
+
+#### Example Usage:
+```php
+// Adding a critical CSS to the head.
+add_inline_asset_to_wp_head( 'style', 'critical-css', 'https://example.com/styles.css', '/path/to/styles.css', '1.0.0', [] );
+
+// Adding a critical JS to the footer.
+add_inline_asset_to_wp_footer( 'script', 'custom-js', 'https://example.com/script.js', '/path/to/script.js', '1.0.0', [] );
+```
+
 ## Available Filters
 The Enqueues MU Plugin provides several filters to customize its behavior, allowing you to fine-tune asset loading, directories, and other settings:
 * `enqueues_move_jquery_to_footer`: Controls whether jQuery should be moved to the footer. Default: true.
@@ -137,6 +167,8 @@ The Enqueues MU Plugin provides several filters to customize its behavior, allow
 * `enqueues_js_config_name_{$js_handle}`: Filter the JS config data for the given JS handle.
 * `enqueues_is_cache_enabled`: Controls whether caching is enabled for asset loading. By default, caching is enabled if the `ENQUEUES_CACHE_ENABLED` constant is set to `true`. This filter allows for runtime control of the caching mechanism.
 * `enqueues_cache_ttl`: Modifies the time-to-live (TTL) for cached entries. By default, the TTL is set to 1 day (`DAY_IN_SECONDS`), but you can customize this via the `ENQUEUES_CACHE_TTL` constant or this filter.
+* `enqueues_wp_head_inline_asset`: Filters the array of assets rendered inline in `wp_head`.
+* `enqueues_wp_footer_inline_asset`: Filters the array of assets rendered inline in `wp_footer`.
 
 ## Default Behavior
 * Default Assets: The plugin will default to main.css and main.js if no specific assets are found for a page type or template.

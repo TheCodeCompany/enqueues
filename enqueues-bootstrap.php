@@ -34,7 +34,7 @@ if ( file_exists( $autoload_file ) ) {
 		[
 			new \Enqueues\Controller\ThemeEnqueueMainController(),
 			new \Enqueues\Controller\ThemeEnqueueJqueryController(),
-			new \Enqueues\Controller\ThemeAssetLoaderController(),
+			new \Enqueues\Controller\ThemeInlineAssetController(),
 		]
 	);
 

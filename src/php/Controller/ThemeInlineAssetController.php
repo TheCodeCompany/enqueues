@@ -6,7 +6,7 @@
  * directly within the HTML document head and footer. It leverages WordPress actions to insert inline assets,
  * optimizing performance and reducing the need for additional HTTP requests.
  *
- * File Path: src/php/Controller/ThemeAssetLoaderController.php
+ * File Path: src/php/Controller/ThemeInlineAssetController.php
  *
  * @package Enqueues
  */
@@ -19,7 +19,7 @@ use function Enqueues\render_asset_inline;
 /**
  * Manages the loading and inline rendering of theme assets.
  */
-class ThemeAssetLoaderController extends Controller {
+class ThemeInlineAssetController extends Controller {
 
 	/**
 	 * Initializes the asset loader functionality.
@@ -40,6 +40,7 @@ class ThemeAssetLoaderController extends Controller {
 	 * control over asset rendering and is an alternative to using WordPress's enqueuing system.
 	 *
 	 * IMPORTANT: This feature does not have dependency support, however it is rendered as late as possible.
+	 *
 	 * @return void
 	 */
 	public function asset_render_wp_head_inline_asset(): void {
@@ -63,7 +64,7 @@ class ThemeAssetLoaderController extends Controller {
 	 * as inline styles or scripts in the footer of the document. This approach allows for direct
 	 * control over asset rendering and is an alternative to using WordPress's enqueuing system.
 	 *
-	 * IMPORTANT: Does not have dependency support, however it is rendered in later priority 999.
+	 * IMPORTANT: This feature does not have dependency support, however it is rendered as late as possible.
 	 *
 	 * @return void
 	 */
