@@ -2,7 +2,7 @@
 /**
  * Handles the enqueuing of jQuery in the footer for the theme.
  *
- * File Path: enqueues/src/php/Controller/ThemeEnqueueJqueryController.php
+ * File Path: src/php/Controller/ThemeEnqueueJqueryController.php
  *
  * @package Enqueues
  */

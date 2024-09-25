@@ -1,5 +1,5 @@
 /**
- * File Path: /enqueues/src/js/enqueues-theme-webpack-entries.js
+ * File Path: /src/js/enqueues-theme-webpack-entries.js
  */
 const enqueuesMergeThemeWebpackEntries = require('./enqueues-merge-theme-webpack-entries');
 

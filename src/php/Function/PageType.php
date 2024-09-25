@@ -2,7 +2,7 @@
 /**
  * Page Type helper funcitons.
  *
- * File Path: enqueues/src/php/Function/PageType.php
+ * File Path: src/php/Function/PageType.php
  *
  * @package Enqueues
  */

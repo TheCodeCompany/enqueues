@@ -2,7 +2,7 @@
 /**
  * Cache utility functions for asset loading in the Enqueues MU Plugin.
  *
- * File Path: enqueues/src/php/Function/Cache.php
+ * File Path: src/php/Function/Cache.php
  *
  * @package Enqueues
  */

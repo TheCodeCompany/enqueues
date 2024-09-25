@@ -2,7 +2,7 @@
 /**
  * Controller responsible for enqueuing the themes main stylesheet for the page, additional seperata sheets are loaded elsewhere.
  *
- * File Path: enqueues/src/php/Controller/ThemeEnqueueMainController.php
+ * File Path: src/php/Controller/ThemeEnqueueMainController.php
  *
  * @package Enqueues
  */

@@ -2,7 +2,7 @@
 /**
  * Class responsible for enqueuing theme assets (stylesheets and scripts) based on page type, template, and post type.
  *
- * File Path: enqueues/src/php/Library/EnqueueAssets.php
+ * File Path: src/php/Library/EnqueueAssets.php
  *
  * @package Enqueues
  */

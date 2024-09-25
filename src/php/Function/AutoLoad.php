@@ -5,7 +5,7 @@
  * This script is responsible for automatically loading function files located in the same directory.
  * You may specify a load order for specific files by adding their names to the `$specific_file_load_order` array.
  *
- * File Path: enqueues/src/php/Function/AutoLoad.php
+ * File Path: src/php/Function/AutoLoad.php
  *
  * @package Enqueues
  */

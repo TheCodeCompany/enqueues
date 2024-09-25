@@ -2,7 +2,7 @@
 /**
  * String manipulation functions.
  *
- * File Path: enqueues/src/php/Function/String.php
+ * File Path: src/php/Function/String.php
  *
  * @package Enqueues
  */

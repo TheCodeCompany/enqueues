@@ -1,5 +1,5 @@
 /**
- * File Path: /enqueues/src/js/enqueues-merge-theme-webpack-entries.js
+ * File Path: /src/js/enqueues-merge-theme-webpack-entries.js
  */
 /**
  * @function enqueuesMergeThemeWebpackEntries
