@@ -11,9 +11,14 @@
 namespace Enqueues;
 
 /**
- * Load package.
+ * Load package, first lets check if this is a standalone and then check if this is a dependency.
  */
 $autoload_file = __DIR__ . '/vendor/autoload.php';
+
+// Check if the file exists. If not, check the parent directory as this may be a dependency.
+if ( ! file_exists( $autoload_file ) ) {
+	$autoload_file = dirname( dirname( __DIR__ ) ) . '/autoload.php';
+}
 
 if ( file_exists( $autoload_file ) ) {
 
