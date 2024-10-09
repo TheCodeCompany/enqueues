@@ -1,22 +1,34 @@
 /**
  * File Path: /src/js/enqueues-merge-theme-webpack-entries.js
  */
+
 /**
  * @function enqueuesMergeThemeWebpackEntries
- * @param {object} entriesObj - The existing entries object.
- * @param {object} newEntries - New entries to be merged.
- * @description Merges new entries into an existing entries object. If a key is already present, it groups multiple entries into an array.
- * @return {object} - The modified entries object.
+ * @param {...object} entriesObjects - Multiple entries objects to be merged.
+ * @description Merges multiple entries objects into one. If a key is already present, it groups multiple entries into an array.
+ * @return {object} - The merged entries object.
  */
-const enqueuesMergeThemeWebpackEntries = (entriesObj, newEntries) => {
-    Object.keys(newEntries).forEach((key) => {
-        if (Array.isArray(entriesObj[key])) {
-            entriesObj[key] = [...entriesObj[key], ...newEntries[key]];
-        } else {
-            entriesObj[key] = newEntries[key];
+const enqueuesMergeThemeWebpackEntries = (...entriesObjects) => {
+    const mergedEntries = {};
+
+    entriesObjects.forEach(entriesObj => {
+        if (!entriesObj || Object.keys(entriesObj).length === 0) {
+            // Skip empty or undefined entries objects
+            return;
         }
+
+        Object.keys(entriesObj).forEach((key) => {
+            if (Array.isArray(mergedEntries[key])) {
+                mergedEntries[key] = [...mergedEntries[key], ...entriesObj[key]];
+            } else if (mergedEntries[key]) {
+                mergedEntries[key] = [mergedEntries[key], ...entriesObj[key]];
+            } else {
+                mergedEntries[key] = entriesObj[key];
+            }
+        });
     });
-    return entriesObj; // Return the modified object
+
+    return mergedEntries;
 };
 
 module.exports = enqueuesMergeThemeWebpackEntries;
