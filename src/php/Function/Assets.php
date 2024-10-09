@@ -133,9 +133,9 @@ function get_asset_page_type_file_data(
 	/**
 	 * Filters the file extension for SCSS/SASS/CSS files.
 	 *
-	 * @param string $css_ext The file extension for SCSS files. Default is 'scss'.
+	 * @param string $css_ext The file extension for SCSS files. Default is 'sass'.
 	 */
-	$css_ext = apply_filters( 'enqueues_asset_theme_css_extension', 'scss' );
+	$css_ext = apply_filters( 'enqueues_asset_theme_css_extension', 'sass' );
 
 	$src_file_path      = "{$directory}/{$src_directory_part}/{$directory_part}/{$file_name}." . ( 'css' === $file_ext ? $css_ext : $js_ext );
 	$compiled_file_path = asset_find_file_path( "{$dist_directory_part}/{$directory_part}", $file_name, $file_ext, $directory );

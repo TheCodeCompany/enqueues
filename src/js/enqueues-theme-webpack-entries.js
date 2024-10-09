@@ -10,10 +10,10 @@ const enqueuesMergeThemeWebpackEntries = require('./enqueues-merge-theme-webpack
  * @param {object} pathModule - The `path` module to use for resolving paths.
  * @param {object} globModule - The `glob` module to use for matching file patterns.
  * @param {string} [srcDirJS='src/js'] - Directory path for JavaScript files.
- * @param {string} [srcDirCSS='src/scss'] - Directory path for SCSS files.
+ * @param {string} [srcDirCSS='src/sass'] - Directory path for SCSS files.
  * @description A function to dynamically resolve and group entry points for Webpack configuration.
  */
-const enqueuesThemeWebpackEntries = (rootDir, pathModule, globModule, srcDirJS = 'src/js', srcDirCSS = 'src/scss') => {
+const enqueuesThemeWebpackEntries = (rootDir, pathModule, globModule, srcDirJS = 'src/js', srcDirCSS = 'src/sass') => {
     // Log for debugging
     console.log('rootDir:', rootDir);
     console.log('srcDirJS:', srcDirJS);
@@ -36,7 +36,7 @@ const enqueuesThemeWebpackEntries = (rootDir, pathModule, globModule, srcDirJS =
             return obj;
         }, {});
 
-    const entriesCSS = safeGlobSync(pathModule.resolve(rootDir, srcDirCSS, '*.scss'))
+    const entriesCSS = safeGlobSync(pathModule.resolve(rootDir, srcDirCSS, '*.sass'))
         .reduce((obj, el) => {
             const name = pathModule.parse(el).name;
             obj[name] = [el];
