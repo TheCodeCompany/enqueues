@@ -76,18 +76,18 @@ The plugin automatically detects the page type and loads the corresponding asset
 ### Webpack Utility for Assets
 The Webpack utility dynamically generates entry points based on your theme's JavaScript and SCSS files. When merging additional entries, always use the enqueuesMergeThemeWebpackEntries function to combine dynamically generated and custom entries to prevent conflict errors.
 
-### Example Usage in Webpack Config
+### Example Usage of Entries in Webpack Config
 
 ```javascript
 // Using CommonJS require
-const enqueuesThemeWebpackEntries = require('../../../path/to/mu-plugins/enqueues/src/js/enqueues-theme-webpack-entries');
-const enqueuesMergeThemeWebpackEntries = require('../../../path/to/mu-plugins/enqueues/src/js/enqueues-merge-theme-webpack-entries');
+const enqueuesThemeWebpackEntries = require('../../../path/to/enqueues/src/js/enqueues-theme-webpack-entries');
+const enqueuesMergeThemeWebpackEntries = require('../../../path/to/enqueues/src/js/enqueues-merge-theme-webpack-entries');
 const path = require('path');
 const glob = require('glob');
 
 // OR using ES6 import
-import enqueuesThemeWebpackEntries from '../../../path/to/mu-plugins/enqueues/src/js/enqueues-theme-webpack-entries';
-import enqueuesMergeThemeWebpackEntries from '../../../path/to/mu-plugins/enqueues/src/js/enqueues-merge-theme-webpack-entries';
+import enqueuesThemeWebpackEntries from '../../../path/to/enqueues/src/js/enqueues-theme-webpack-entries';
+import enqueuesMergeThemeWebpackEntries from '../../../path/to/enqueues/src/js/enqueues-merge-theme-webpack-entries';
 import path from 'path';
 const glob = require('glob');
 
@@ -97,11 +97,13 @@ const customEntries = {
     slick: ['./src/js/library/slick.js'],
 };
 
+const entries = enqueuesMergeThemeWebpackEntries(
+	enqueuesThemeWebpackEntries(path.resolve(__dirname), path, glob, 'src/js', 'src/scss'),
+	customEntries,
+);
+
 module.exports = {
-    entry: enqueuesMergeThemeWebpackEntries(
-        enqueuesThemeWebpackEntries(path.resolve(__dirname), path, glob, 'src/js', 'src/scss'),
-        customEntries,
-    ),
+    entry: entries,
     output: {
         filename: '[name].js',
         path: path.resolve(__dirname, 'dist'),
@@ -117,6 +119,52 @@ module.exports = {
 #### Important Notes:
 * You must always use enqueuesMergeThemeWebpackEntries() to merge dynamic and custom entries to ensure both sets of entries are handled correctly.
 * This approach works with both JavaScript and SCSS (or CSS) entries, combining everything into the final Webpack build configuration.
+
+### Example Usage of `enqueuesGetCopyPluginConfigPattern` in Webpack Config
+To use the CopyPlugin patterns, import the enqueuesGetCopyPluginConfigPattern and define the patterns for different asset types like images and fonts. Here’s an example:
+
+```javascript
+// Importing the CopyPlugin config pattern utility.
+import enqueuesGetCopyPluginConfigPattern from '../../../path/to/enqueues/src/js/enqueues-copy-plugin-config-pattern.js';
+
+// Copy Plugin Configuration.
+const CopyWebpackPlugin = require('copy-webpack-plugin');
+const copyPlugin = new CopyWebpackPlugin({
+    patterns: [
+		
+        // Pattern for images if it uses the default src/images directory
+        enqueuesGetCopyPluginConfigPattern(rootDir, distDir, 'images'),
+
+        // Pattern for images if its different from default src/images e.g. source
+        enqueuesGetCopyPluginConfigPattern(rootDir, distDir, 'images', '**/source/images/**/*'),
+		
+        // Pattern for fonts if it uses the default src/fonts directory
+        enqueuesGetCopyPluginConfigPattern(rootDir, distDir, 'fonts'),
+
+        // Pattern for fonts if its different from default src/fonts e.g. source
+        enqueuesGetCopyPluginConfigPattern(rootDir, distDir, 'fonts', '**/source/fonts/**/*'),
+        
+        // You can add additional patterns here for other contexts, e.g., block-json, render-php
+    ],
+});
+
+module.exports = {
+    plugins: [copyPlugin],
+};
+```
+
+#### Explanation:
+1. `enqueuesGetCopyPluginConfigPattern()`: This function generates patterns for CopyPlugin based on the specified context (e.g., images, fonts, etc.). It supports various contexts, including block-json and render-php.
+1. The example demonstrates how to use the CopyPlugin along with enqueuesGetCopyPluginConfigPattern() to manage image and font files, with the ability to extend for other file types.
+
+##### Known Contexts for enqueuesGetCopyPluginConfigPattern
+The `enqueuesGetCopyPluginConfigPattern` function supports the following contexts:
+
+* 'images': Copies image files from src/images to the destination directory.
+* 'fonts': Copies font files from src/fonts to the destination directory.
+* 'block-json': Copies Gutenberg block JSON configuration files.
+* 'render-php': Copies Gutenberg render PHP files.
+Each pattern has a default from path which can be overridden as needed.
 
 ### Inline Asset Registration
 The plugin allows you to register critical CSS or JS assets to be rendered directly within the `wp_head` or `wp_footer` tags using the following functions:
