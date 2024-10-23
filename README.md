@@ -8,6 +8,7 @@ The Enqueues MU Plugin automates the process of loading CSS and JavaScript asset
 * Inline Asset Support: Supports rendering critical CSS/JS assets inline in wp_head or wp_footer.
 * Webpack Utility: Includes a utility for dynamically generating Webpack entry points for your theme’s JavaScript and SCSS files.
 * Inline Asset Registration: Easily register critical CSS and JS to be rendered inline within the `wp_head` or `wp_footer` via provided functions.
+* Block Editor Integration: Offers hooks and features to manage block categories, enqueue block assets, and register custom blocks.
 
 ## Directory Structure
 
@@ -218,12 +219,54 @@ The Enqueues MU Plugin provides several filters to customize its behavior, allow
 * `enqueues_wp_head_inline_asset`: Filters the array of assets rendered inline in `wp_head`.
 * `enqueues_wp_footer_inline_asset`: Filters the array of assets rendered inline in `wp_footer`.
 
+### Block Editor Filters
+The plugin provides hooks and filters to integrate with WordPress block editor (Gutenberg). Developers can disable or extend functionality by using these filters:
+
+* `enqueues_is_block_editor_features_on`: Enable/disable block editor functionality for the theme or plugin. Default: true.
+* `enqueues_block_editor_namespace`: Customize the namespace used for block registration. Default: 'custom'.
+* `enqueues_block_editor_dist_dir`: Customize the block editor assets directory. Default: '/dist/block-editor/blocks'.
+* `enqueues_block_editor_categories`: Add custom categories for Gutenberg blocks.
+* `enqueues_block_editor_localized_data_{$type}_{$block}`: Filter localized data passed to block-specific scripts based on type (blocks, plugins, or extensions) and block name.
+* `enqueues_block_editor_name_{$type}_{$block}`: Customize the registered name of a block based on the block type (blocks, plugins, or extensions) and name.
+* `enqueues_block_editor_localized_data_var_name_{$type}_{$block}`: Customize the variable name for localized block editor data passed to scripts.
+
 ## Default Behavior
 * Default Assets: The plugin will default to main.css and main.js if no specific assets are found for a page type or template.
 * jQuery: By default, jQuery is moved to the footer to enhance performance (see filter to change this global or per page).
 
 ## Extending the Plugin
 You can also extend the plugin by adding custom filters to change the source directories, asset extensions, or inline behavior based on specific project needs.
+
+### Example Usage of Block Editor Filters
+The following are examples, please avoid anonymous functions.
+
+#### Disabling Block Editor Features
+```php
+add_filter( 'enqueues_is_block_editor_features_on', '__return_false' );
+```
+
+#### Customizing Block Namespace
+```php
+add_filter( 'enqueues_block_editor_namespace', function( $namespace ) {
+    return 'mytheme';
+});
+```
+
+#### Modifying Block Categories
+```php
+add_filter( 'enqueues_block_editor_categories', function( $categories ) {
+    return array_merge(
+		$categories,
+		[
+			[
+				'slug'  => 'mytheme-category',
+				'title' => __( 'My Theme Blocks', 'mytheme' ),
+				'icon'  => '/path/to/icon.svg',
+			],
+		]
+	);
+});
+```
 
 ## Troubleshooting
 **Missing Assets:** If an asset is missing in a local development environment, the plugin will display a error. Ensure that you have run your build tools (e.g., npm, Webpack) to generate the necessary assets. If you dont see an error, make sure you have the is_local() function setup.

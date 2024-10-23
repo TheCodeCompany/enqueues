@@ -13,7 +13,7 @@
 
 namespace Enqueues\Controller;
 
-use WPMVC\Core\Controller;
+use Enqueues\Base\Main\Controller;
 use function Enqueues\render_asset_inline;
 
 /**

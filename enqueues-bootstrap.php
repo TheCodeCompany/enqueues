@@ -28,13 +28,14 @@ if ( file_exists( $autoload_file ) ) {
 		define( 'Enqueues\\APP_NAME', basename( __FILE__, '.php' ) );
 	}
 
-	$enqueues_app = new \WPMVC\Core\Application(
+	$enqueues_app = new \Enqueues\Base\Main\Application(
 		APP_NAME,
 		__DIR__,
 		[
 			new \Enqueues\Controller\ThemeEnqueueMainController(),
 			new \Enqueues\Controller\ThemeEnqueueJqueryController(),
 			new \Enqueues\Controller\ThemeInlineAssetController(),
+			new \Enqueues\Controller\BlockEditorRegistrationController(),
 		]
 	);
 
@@ -43,11 +44,11 @@ if ( file_exists( $autoload_file ) ) {
 	/**
 	 * Variable Type Definition.
 	 *
-	 * @param \WPMVC\Library\Config $enqueues_app_config The config for this app.
+	 * @param \Enqueues\Base\Library\Config $enqueues_app_config The config for this app.
 	 */
 	$enqueues_app_config = $enqueues_app->get_config();
 
-} elseif ( function_exists( 'is_local' ) && is_local() ) {
+} elseif ( function_exists( '\\Enqueues\\is_local' ) && \Enqueues\is_local() ) {
 
 	// Trigger an error for local environment only.
 	wp_die( 'Run composer for the "enqueues" MU Plugin.', E_USER_WARNING ); // phpcs:ignore

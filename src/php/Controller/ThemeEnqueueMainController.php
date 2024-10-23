@@ -9,7 +9,7 @@
 
 namespace Enqueues\Controller;
 
-use WPMVC\Core\Controller;
+use Enqueues\Base\Main\Controller;
 use Enqueues\Library\EnqueueAssets;
 use function Enqueues\add_inline_asset_to_wp_footer;
 use function Enqueues\add_inline_asset_to_wp_head;

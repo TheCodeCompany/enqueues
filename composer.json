@@ -2,16 +2,8 @@
     "name": "thecodeco/enqueues",
     "description": "Enqueues",
     "version": "1.0.0",
-    "repositories": [
-        {
-            "type": "vcs",
-            "name": "thecodeco/wpmvc",
-            "url": "https://bitbucket.org/thecodeco/wpmvc.git"
-        }
-    ],
     "require": {
-        "php": ">=8.0.0",
-        "thecodeco/wpmvc": "dev-master"
+        "php": ">=8.0.0"
     },
     "autoload": {
         "files": [
@@ -26,4 +18,3 @@
         "exclude": [".gitignore"]
     }
 }
-  

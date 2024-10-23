@@ -9,7 +9,7 @@
 
 namespace Enqueues\Controller;
 
-use WPMVC\Core\Controller;
+use Enqueues\Base\Main\Controller;
 
 /**
  * ThemeEnqueueJqueryController class.
