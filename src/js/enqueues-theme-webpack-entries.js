@@ -2,7 +2,7 @@
  * File Path: /src/js/enqueues-theme-webpack-entries.js
  */
 
-const enqueuesMergeThemeWebpackEntries = require('./enqueues-merge-theme-webpack-entries');
+const enqueuesMergeThemeWebpackEntries = require('./enqueues-merge-webpack-entries');
 
 /**
  * @function enqueuesThemeWebpackEntries
