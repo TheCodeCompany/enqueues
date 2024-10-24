@@ -45,7 +45,8 @@ $enqueues_app = new \Enqueues\Base\Main\Application(
 		new \Enqueues\Controller\ThemeEnqueueJqueryController(),
 		new \Enqueues\Controller\ThemeInlineAssetController(),
 		new \Enqueues\Controller\BlockEditorRegistrationController(),
-	]
+	],
+	9999 // Set the priority later so other controllers can hook into plugins_loaded before default priority of 10.
 );
 
 // Make application configuration globally available.
