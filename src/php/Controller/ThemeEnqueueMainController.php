@@ -49,6 +49,13 @@ class ThemeEnqueueMainController extends Controller {
 	 * @return void
 	 */
 	public function set_up() {
+
+		// Prevent duplicate initialization. There should only be once instance of this 
+		// controllers features regardless of load context.
+		if ( ! $this->initialize() ) {
+			return;
+		}
+
 		add_action( 'wp_enqueue_scripts', [ $this, 'load_page_or_template_type_assets' ] );
 	}
 

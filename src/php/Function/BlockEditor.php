@@ -9,10 +9,6 @@
 
 namespace Enqueues;
 
-function is_block_editor_features_on() {
-	return (bool) apply_filters( 'enqueues_is_block_editor_features_on', true );
-}
-
 /**
  * Retrieves the block editor namespace.
  *

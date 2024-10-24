@@ -10,7 +10,7 @@
 
 namespace Enqueues;
 
-// Prevent duplicate loading if this package is already loaded.
+// bail early. Prevent duplicate loading if this package is already loaded.
 if ( defined( 'Enqueues\\APP_NAME' ) ) {
 	return;
 }
@@ -25,10 +25,12 @@ if ( ! file_exists( $autoload_file ) ) {
 	$autoload_file = dirname( dirname( __DIR__ ) ) . '/autoload.php';
 }
 
+// Bail if the autoload file does not exist.
 if ( ! file_exists( $autoload_file ) ) {
 	return;
 }
 
+// Load the autoload file.
 require_once $autoload_file;
 
 // Define the APP_NAME constant to prevent further duplicate loads.
@@ -36,25 +38,36 @@ if ( ! defined( 'Enqueues\\APP_NAME' ) ) {
 	define( 'Enqueues\\APP_NAME', basename( __FILE__, '.php' ) );
 }
 
-// Initialize the Enqueues application.
-$enqueues_app = new \Enqueues\Base\Main\Application(
-	APP_NAME,
-	__DIR__,
-	[
-		new \Enqueues\Controller\ThemeEnqueueMainController(),
-		new \Enqueues\Controller\ThemeEnqueueJqueryController(),
-		new \Enqueues\Controller\ThemeInlineAssetController(),
-		new \Enqueues\Controller\BlockEditorRegistrationController(),
-	],
-	9999 // Set the priority later so other controllers can hook into plugins_loaded before default priority of 10.
-);
-
-// Make application configuration globally available.
-global $enqueues_app_config;
-
 /**
- * Variable Type Definition.
+ * Initialize the Enqueues controllers.
+ * This function initializes the controllers for the Enqueues application and must be called early within plugins_loaded hook.
+ * Typicaly within the WPMVC application a controller set_up method is called within the plugins_loaded hook at priority of 10.
  *
- * @var \Enqueues\Base\Library\Config $enqueues_app_config The configuration for this app.
+ * @param string $context The context to load the controllers, default is 'default'.
+ *
+ * @return void
  */
-$enqueues_app_config = $enqueues_app->get_config();
+function enqueues_initialize_controllers( $context = 'default' ) {
+	// Initialize the Enqueues application.
+	$enqueues_app = new \Enqueues\Base\Main\Application(
+		APP_NAME,
+		__DIR__,
+		[
+			apply_filters( 'enqueues_load_controller', true, 'ThemeEnqueueMainController', $context ) ? new \Enqueues\Controller\ThemeEnqueueMainController() : null,
+			apply_filters( 'enqueues_load_controller', true, 'ThemeEnqueueJqueryController', $context ) ? new \Enqueues\Controller\ThemeEnqueueJqueryController() : null,
+			apply_filters( 'enqueues_load_controller', true, 'ThemeInlineAssetController', $context ) ? new \Enqueues\Controller\ThemeInlineAssetController() : null,
+			apply_filters( 'enqueues_load_controller', true, 'BlockEditorRegistrationController', $context ) ? new \Enqueues\Controller\BlockEditorRegistrationController() : null,
+		],
+		9999 // Set the priority later so other controllers can hook into plugins_loaded before default priority of 10.
+	);
+
+	// Make application configuration globally available.
+	global $enqueues_app_config;
+
+	/**
+	 * Variable Type Definition.
+	 *
+	 * @var \Enqueues\Base\Library\Config $enqueues_app_config The configuration for this app.
+	 */
+	$enqueues_app_config = $enqueues_app->get_config();
+}
