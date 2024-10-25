@@ -5,10 +5,10 @@
 /**
  * @function cssFilenameGenerator
  * @param {object} chunk - The Webpack chunk object.
+ * @param {boolean} devMode - Whether in development mode or not.
  * @param {object} pathModule - The `path` module to use for resolving paths.
  * @param {object} globModule - The `glob` module to use for matching file patterns.
  * @param {object} blockeditorDirectories - The directories map to determine block types.
- * @param {boolean} devMode - Whether in development mode or not.
  * @param {string} distCSSDir - The directory for general CSS files.
  * @param {string} distBlockEditorDir - The directory for block editor CSS files.
  * @description Generates the filename for the MiniCssExtractPlugin based on the chunk name.
@@ -16,10 +16,10 @@
  */
 const cssFilenameGenerator = (
     chunk,
+    devMode = false,
     pathModule = null,
     globModule = null,
     blockeditorDirectories = null,
-    devMode = false,
     distCSSDir = 'css',
     distBlockEditorDir = 'block-editor'
 ) => {
