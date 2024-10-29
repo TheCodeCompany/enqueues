@@ -351,18 +351,10 @@ class EnqueueAssets {
 		/**
 		 * Filter to render CSS inline.
 		 *
-		 * @param bool $render_css_inline Whether to render CSS inline.
+		 * @param bool   $render_inline Whether to render CSS inline.
+		 * @param string $css_handle    The CSS handle.
 		 */
-		$render_inline = apply_filters( 'enqueues_render_css_inline', false );
-
-		if ( $css_handle ) {
-			/**
-			 * Filter to render CSS inline by handle.
-			 *
-			 * @param bool $render_css_inline Whether to render CSS inline.
-			 */
-			$render_inline = apply_filters( "enqueues_render_css_inline_{$css_handle}", $render_inline );
-		}
+		$render_inline = apply_filters( 'enqueues_render_css_inline', false, $css_handle );
 
 		return $render_inline;
 	}
@@ -379,18 +371,10 @@ class EnqueueAssets {
 		/**
 		 * Filter to render JS inline.
 		 *
-		 * @param bool $render_js_inline Whether to render JS inline.
+		 * @param bool   $render_inline Whether to render JS inline.
+		 * @param string $js_handle    The JS handle.
 		 */
-		$render_inline = apply_filters( 'enqueues_render_js_inline', false );
-
-		if ( $js_handle ) {
-			/**
-			 * Filter to render JS inline by handle.
-			 *
-			 * @param bool $render_js_inline Whether to render JS inline.
-			 */
-			$render_inline = apply_filters( "enqueues_render_js_inline_{$js_handle}", $render_inline );
-		}
+		$render_inline = apply_filters( 'enqueues_render_js_inline', false, $js_handle );
 
 		return $render_inline;
 	}

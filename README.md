@@ -254,9 +254,7 @@ The Enqueues MU Plugin provides several filters to customize its behavior, allow
 * `enqueues_theme_css_src_dir`: Customize the directory path for CSS files relative to the theme root. Default: 'dist/css'.
 * `enqueues_theme_js_src_dir`: Customize the directory path for JS files relative to the theme root. Default: 'dist/js'.
 * `enqueues_render_css_inline`: Controls whether CSS assets should be rendered inline. Default: false.
-* `enqueues_render_css_inline_{$css_handle}`: Controls whether CSS assets for a specific handle should be rendered inline. Default: value of `enqueues_render_css_inline` filter which is default false.
 * `enqueues_render_js_inline`: Controls whether JS assets should be rendered inline. Default: false.
-* `enqueues_render_js_inline_{$js_handle}`: Controls whether JS assets for a specific handle should be rendered inline. Default: value of `enqueues_render_js_inline` filter which is default false.
 * `enqueues_asset_theme_src_directory`: Customize the source directory path for SCSS, CSS, and JS files relative to the theme root. Default: 'src'.
 * `enqueues_asset_theme_dist_directory`: Customize the distribution directory path for compiled CSS and JS files relative to the theme root. Default: 'dist'.
 * `enqueues_asset_theme_js_extension`: Change the file extension used for JavaScript files. Default: 'js'.
