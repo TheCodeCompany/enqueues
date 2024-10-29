@@ -28,6 +28,12 @@ class ThemeEnqueueJqueryController extends Controller {
 	 */
 	public function set_up() {
 
+		// Prevent duplicate initialization. There should only be once instance of this 
+		// controllers features regardless of load context.
+		if ( ! $this->initialize() ) {
+			return;
+		}
+
 		add_action( 'wp_enqueue_scripts', [ $this, 'move_jquery_to_footer' ], 100 );
 	}
 

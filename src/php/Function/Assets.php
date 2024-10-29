@@ -326,7 +326,7 @@ function fetch_asset_file_contents( string $url, string $file = '' ): false|stri
 			// Check if the response is an error.
 			if ( is_wp_error( $response ) ) {
 				// Local development environment error.
-				if ( function_exists( 'is_local' ) && is_local() ) {
+				if ( function_exists( 'Enqueues\\is_local' ) && is_local() ) {
 					wp_die( 'Error retrieving asset: ' . $response->get_error_message() ); // phpcs:ignore
 				}
 				return false;
@@ -336,7 +336,7 @@ function fetch_asset_file_contents( string $url, string $file = '' ): false|stri
 			$response_code = wp_remote_retrieve_response_code( $response );
 			if ( 200 !== $response_code ) {
 				// Local development environment error for non-200 response.
-				if ( function_exists( 'is_local' ) && is_local() ) {
+				if ( function_exists( 'Enqueues\\is_local' ) && is_local() ) {
 					wp_die( 'Unexpected response code: ' . $response_code ); // phpcs:ignore
 				}
 				return false;

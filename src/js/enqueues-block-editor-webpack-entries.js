@@ -67,13 +67,11 @@ const enqueuesBlockEditorWebpackEntries = (rootDir, pathModule, globModule, srcD
         getBlockEditorEntries('blocks', 'css-editor', 'scss'),
         getBlockEditorEntries('blocks', 'css-style', 'scss'),
         getBlockEditorEntries('blocks', 'css-view', 'scss'),
-
         getBlockEditorEntries('plugins', 'js-editor', 'js'),
         getBlockEditorEntries('plugins', 'js-script', 'js'),
         getBlockEditorEntries('plugins', 'js-view', 'js'),
         getBlockEditorEntries('plugins', 'css-style', 'scss'),
         getBlockEditorEntries('plugins', 'css-view', 'scss'),
-
         getBlockEditorEntries('extensions', 'js-editor', 'js'),
         getBlockEditorEntries('extensions', 'js-script', 'js'),
         getBlockEditorEntries('extensions', 'js-view', 'js'),

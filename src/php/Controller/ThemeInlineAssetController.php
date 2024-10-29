@@ -28,6 +28,12 @@ class ThemeInlineAssetController extends Controller {
 	 */
 	public function set_up() {
 
+		// Prevent duplicate initialization. There should only be once instance of this 
+		// controllers features regardless of load context.
+		if ( ! $this->initialize() ) {
+			return;
+		}
+
 		add_action( 'wp_head', [ $this, 'asset_render_wp_head_inline_asset' ], PHP_INT_MAX );
 		add_action( 'wp_footer', [ $this, 'asset_render_wp_footer_inline_asset' ], PHP_INT_MAX );
 	}

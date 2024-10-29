@@ -30,6 +30,11 @@ class BlockEditorRegistrationController extends Controller {
 	 */
 	public function set_up() {
 
+		// Prevent duplicate initialization.
+		if ( ! $this->initialize() ) {
+			return;
+		}
+
 		// Hooks to register blocks, categories, and plugins.
 		add_action( 'init', [ $this, 'register_blocks' ] );
 		add_filter( 'block_categories_all', [ $this, 'block_categories' ], 10, 2 );
@@ -43,11 +48,6 @@ class BlockEditorRegistrationController extends Controller {
 	 * Register Gutenberg blocks by scanning the block directory.
 	 */
 	public function register_blocks() {
-
-		// Bail early.
-		if ( ! is_block_editor_features_on() ) {
-			return;
-		}
 
 		$directory                  = get_template_directory();
 		$block_editor_dist_dir_path = get_block_editor_dist_dir();
@@ -85,17 +85,12 @@ class BlockEditorRegistrationController extends Controller {
 	/**
 	 * Register block categories.
 	 *
-	 * @param array $categories Existing categories.
+	 * @param array  $categories Existing categories.
 	 * @param object $post Current post object.
 	 * 
 	 * @return array Modified categories.
 	 */
 	public function block_categories( $categories, $post ) {
-
-		// Bail early.
-		if ( ! is_block_editor_features_on() ) {
-			return $categories;
-		}
 
 		$block_editor_categories = get_block_editor_categories();
 
@@ -128,7 +123,7 @@ class BlockEditorRegistrationController extends Controller {
 	 *
 	 * @param string $type The asset type (blocks, plugins, or extensions).
 	 * @param string $context The context (frontend, editor, view).
-	 * @param bool $register_only Whether to only register assets or enqueue them.
+	 * @param bool   $register_only Whether to only register assets or enqueue them.
 	 *
 	 * @return void
 	 */
@@ -189,11 +184,6 @@ class BlockEditorRegistrationController extends Controller {
 	 */
 	public function enqueue_frontend_assets(): void {
 
-		// Bail early.
-		if ( ! is_block_editor_features_on() ) {
-			return;
-		}
-
 		$this->enqueue_assets( 'blocks', 'frontend' );
 		$this->enqueue_assets( 'blocks', 'view' );
 		$this->enqueue_assets( 'plugins', 'frontend' );
@@ -208,11 +198,6 @@ class BlockEditorRegistrationController extends Controller {
 	 * @return void
 	 */
 	public function enqueue_editor_assets(): void {
-
-		// Bail early.
-		if ( ! is_block_editor_features_on() ) {
-			return;
-		}
 
 		$this->enqueue_assets( 'blocks', 'editor', false );
 		$this->enqueue_assets( 'plugins', 'editor', false );
