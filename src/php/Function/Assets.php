@@ -287,11 +287,15 @@ function render_asset_inline( $asset ) {
 	// Output the inline style or script.
 	if ( $content && 'style' === $type ) {
 		?>
+		<!-- Inline asset: <?php echo esc_html( $element_id ); ?> -->
 		<style id="<?php echo esc_attr( $element_id ); ?>"><?php echo $content; // phpcs:ignore ?></style>
+		<!-- End inline asset: <?php echo esc_html( $element_id ); ?> -->
 		<?php
 	} elseif ( $content && 'script' === $type ) {
 		?>
+		<!-- Inline asset: <?php echo esc_html( $element_id ); ?> -->
 		<script id="<?php echo esc_attr( $element_id ); ?>" type="text/javascript"><?php echo $content; // phpcs:ignore ?></script>
+		<!-- End inline asset: <?php echo esc_html( $element_id ); ?> -->
 		<?php
 	}
 }
