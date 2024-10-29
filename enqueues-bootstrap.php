@@ -33,10 +33,8 @@ if ( ! file_exists( $autoload_file ) ) {
 // Load the autoload file.
 require_once $autoload_file;
 
-// Define the APP_NAME constant to prevent further duplicate loads.
-if ( ! defined( 'Enqueues\\APP_NAME' ) ) {
-	define( 'Enqueues\\APP_NAME', basename( __FILE__, '.php' ) );
-}
+// Define the APP_NAME constant to prevent further duplicate loads. Based of the folder name.
+define( 'Enqueues\\APP_NAME', basename( __DIR__ ) );
 
 /**
  * Initialize the Enqueues controllers.
@@ -48,16 +46,19 @@ if ( ! defined( 'Enqueues\\APP_NAME' ) ) {
  * @return void
  */
 function enqueues_initialize_controllers( $context = 'default' ) {
+
+	$contollers = [
+		apply_filters( 'enqueues_load_controller', true, 'ThemeEnqueueMainController', $context ) ? new \Enqueues\Controller\ThemeEnqueueMainController() : null,
+		apply_filters( 'enqueues_load_controller', true, 'ThemeEnqueueJqueryController', $context ) ? new \Enqueues\Controller\ThemeEnqueueJqueryController() : null,
+		apply_filters( 'enqueues_load_controller', true, 'ThemeInlineAssetController', $context ) ? new \Enqueues\Controller\ThemeInlineAssetController() : null,
+		apply_filters( 'enqueues_load_controller', true, 'BlockEditorRegistrationController', $context ) ? new \Enqueues\Controller\BlockEditorRegistrationController() : null,
+	];
+
 	// Initialize the Enqueues application.
 	$enqueues_app = new \Enqueues\Base\Main\Application(
 		APP_NAME,
 		__DIR__,
-		[
-			apply_filters( 'enqueues_load_controller', true, 'ThemeEnqueueMainController', $context ) ? new \Enqueues\Controller\ThemeEnqueueMainController() : null,
-			apply_filters( 'enqueues_load_controller', true, 'ThemeEnqueueJqueryController', $context ) ? new \Enqueues\Controller\ThemeEnqueueJqueryController() : null,
-			apply_filters( 'enqueues_load_controller', true, 'ThemeInlineAssetController', $context ) ? new \Enqueues\Controller\ThemeInlineAssetController() : null,
-			apply_filters( 'enqueues_load_controller', true, 'BlockEditorRegistrationController', $context ) ? new \Enqueues\Controller\BlockEditorRegistrationController() : null,
-		],
+		array_filter( $contollers ), // Remove any falsy values (such as null) from the controllers array.
 		9999 // Set the priority later so other controllers can hook into plugins_loaded before default priority of 10.
 	);
 

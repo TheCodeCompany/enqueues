@@ -85,7 +85,7 @@ add_action( 'plugins_loaded', function() {
 
 #### Explanation:
 * **Context-Sensitive Loading:** Context-Sensitive Loading: The function enqueues_initialize_controllers() accepts a context parameter (default is 'default') and uses the enqueues_load_controller filter to decide whether each controller should be initialized based on the provided context.
-* **Customization via Filters:** By using the enqueues_load_controller filter, you can programmatically control which controllers to load for a given context. This allows you to disable certain features or controllers when Enqueues is used as a dependency within a larger package like Infinite Scroll.
+* **Customization via Filters:** By using the enqueues_load_controller filter, you can programmatically control which controllers to load for a given context. This allows you to disable certain features or controllers when Enqueues is used as a dependency within a larger package like Infinite Scroll. To do this properly place the filter before `enqueues_initialize_controllers()`.
 
 #### Example: Disabling Controllers for a Specific Context
 You can disable certain controllers for a given context by hooking into the `enqueues_load_controller` filter, returning `false` for the controllers you don't want to load. This is only necessary if `enqueues_initialize_controllers()` has initialized the controllers. Controllers that should only be initialized once already have protection against multiple initialization.
@@ -105,6 +105,7 @@ add_filter( 'enqueues_load_controller', function( $load, $controller, $context )
     // Default behavior: return true to load the controller.
     return $load;
 }, 10, 3 );
+enqueues_initialize_controllers( 'theme' );
 ```
 
 This approach allows you to conditionally load only the necessary Enqueues controllers based on the context in which the package is being used. This flexibility ensures that you can avoid conflicts or redundant loading of the same controllers in different parts of your application.
