@@ -123,6 +123,215 @@ The plugin automatically detects the page type and loads the corresponding asset
         - Template-specific assets (e.g., template-example.css and template-example.js).
     * If no specific asset is found, it will fall back to main.css and main.js.
 
+### Webpack Config
+
+### Example Usage of Entries in Webpack Config
+The following is within `/themes/<theme name>/build-tools/webpack.config.babel.js`.
+
+```javascript
+import path from 'path';
+const glob = require('glob');
+import webpack from 'webpack';
+import MiniCssExtractPlugin from 'mini-css-extract-plugin';
+import TerserPlugin from 'terser-webpack-plugin';
+import CssMinimizerPlugin from 'css-minimizer-webpack-plugin';
+import { CleanWebpackPlugin } from 'clean-webpack-plugin';
+import DependencyExtractionWebpackPlugin from '@wordpress/dependency-extraction-webpack-plugin';
+import CopyWebpackPlugin from 'copy-webpack-plugin'
+
+// Enqueues specific helper fucntions.
+import enqueuesMergeWebpackEntries from '../../../mu-plugins/sciencealert/build-tools/vendor/thecodeco/enqueues/src/js/enqueues-merge-webpack-entries.js';
+import enqueuesThemeWebpackEntries from '../../../mu-plugins/sciencealert/build-tools/vendor/thecodeco/enqueues/src/js/enqueues-theme-webpack-entries.js';
+import enqueuesBlockEditorWebpackEntries from '../../../mu-plugins/sciencealert/build-tools/vendor/thecodeco/enqueues/src/js/enqueues-block-editor-webpack-entries.js';
+import enqueuesGetCopyPluginConfigPattern from '../../../mu-plugins/sciencealert/build-tools/vendor/thecodeco/enqueues/src/js/enqueues-copy-plugin-config-pattern.js';
+import cssFilenameGenerator from '../../../mu-plugins/sciencealert/build-tools/vendor/thecodeco/enqueues/src/js/enqueues-css-filename-generator.js';
+import jsFilenameGenerator from '../../../mu-plugins/sciencealert/build-tools/vendor/thecodeco/enqueues/src/js/enqueues-js-filename-generator.js';
+
+// Detecting Dev Mode
+const devMode = process.env.NODE_ENV !== 'production';
+
+// Directory locations.
+const rootDir = path.resolve(__dirname, '..'); // Project root.
+const buildDir = path.resolve(rootDir, 'build-tools'); // The build tools.
+const distDir = path.resolve(rootDir, 'dist'); // The compiled distribution assets.
+const nodeModulesDir = path.resolve(rootDir, 'build-tools/node_modules'); // The node module dir.
+
+console.log('Root directory:', rootDir);
+console.log('Build directory:', buildDir);
+console.log('Dist directory:', distDir);
+console.log('Node Modules directory:', nodeModulesDir);
+
+// All directories located within the /src/block-editor/ and /dist/block-editor/ which matches registration.
+const blockeditorDirectories = {
+	'blocks/': 'blocks',
+	'plugins/': 'plugins',
+	'extensions/': 'extensions',
+};
+
+const cssPlugin = new MiniCssExtractPlugin({
+    filename: ({ chunk }) => cssFilenameGenerator(chunk, blockeditorDirectories, devMode),
+});
+
+/**
+ * BlockEditor files and folders to remove, which is created due to MiniCssExtractPlugin.
+ *
+ * Webpack generating empty JavaScript files for CSS-only entries. In Webpack, when you define an entry
+ * point that points to a CSS file (or SASS/LESS file which ultimately compiles down to CSS), Webpack
+ * still generates a JS file, even though you might not have any actual JavaScript code associated with that entry.
+ *
+ * Add the paths you want to remove after the build here.
+ */
+const cleanAfterEveryBuildPatterns = Object.values(blockeditorDirectories).flatMap((type) => [
+	`block-editor/${type}/**/style`,
+	`block-editor/${type}/**/editor`,
+]);
+
+// Keeping it clean and fresh, clean the dist dir before build and configuration to clean specific folders after building.
+const cleanWebpackPlugin = new CleanWebpackPlugin({
+	dry: false,
+	cleanOnceBeforeBuildPatterns: ['**/*'], // Clean all files in dist folder.
+	dangerouslyAllowCleanPatternsOutsideProject: true, // Dist dir is one step outside the project root.
+	cleanAfterEveryBuildPatterns,
+});
+
+// Minify JS.
+const optimizeJS = new TerserPlugin({
+	terserOptions: {
+		format: {
+			comments: devMode, // Ensure comments are removed
+		},
+	},
+	extractComments: devMode, // Prevents extracting comments to a separate file
+});
+
+// Minify CSS.
+const optimizeCss = new CssMinimizerPlugin({
+	minimizerOptions: {
+		preset: [
+			'default',
+			{
+				discardComments: { removeAll: ! devMode }, // Explicitly remove all comments
+			},
+		],
+	},
+});
+
+// Added Jquery declaration into Webpack.
+const jquery = new webpack.ProvidePlugin({
+	$: 'jquery',
+	jQuery: 'jquery',
+	'window.jQuery': 'jquery',
+});
+
+// Copy Plugin Configuration.
+const copyPlugin = new CopyWebpackPlugin({
+	patterns: [
+		enqueuesGetCopyPluginConfigPattern(rootDir, distDir, 'images'), // Copy all images from src to dist dir, all usage should point to images in the dist dir not src, src images should be excluded from the deploy.
+		enqueuesGetCopyPluginConfigPattern(rootDir, distDir, 'fonts'), // Copy all fonts from src to dist dir, all usage should point to fonts in the dist dir not src, src fonts should be excluded from the deploy.
+		enqueuesGetCopyPluginConfigPattern(rootDir, distDir, 'block-json'), // Copy the block.json file from the src dir to the dist dir for block registration.
+		enqueuesGetCopyPluginConfigPattern(rootDir, distDir, 'render-php'), // Copy the render.php file from the src dir to the dist dir for block rendering.
+	],
+});
+
+const plugins = [
+	cleanWebpackPlugin,
+	jquery,
+	cssPlugin,
+	copyPlugin,
+	new DependencyExtractionWebpackPlugin(),
+	new webpack.WatchIgnorePlugin({ paths: [distDir, buildDir] }),
+];
+
+const entries = enqueuesMergeWebpackEntries(
+	enqueuesThemeWebpackEntries( rootDir, path, glob ),
+	enqueuesBlockEditorWebpackEntries( rootDir, path, glob ),
+);
+
+export default {
+	mode: devMode ? 'development' : 'production',
+	stats: devMode ? 'verbose' : 'normal',
+	context: rootDir,
+	resolve: {
+		modules: [nodeModulesDir, 'node_modules']
+	},
+	resolveLoader: {
+		modules: [nodeModulesDir, 'node_modules'],
+	},
+	devtool: devMode ? 'source-map' : false,
+	watchOptions: {
+		aggregateTimeout: 500,
+		poll: 1000,
+		ignored: [`${distDir}/**`, `${buildDir}/**`],
+	},
+	entry: entries,
+	output: {
+        path: distDir,
+		clean: true,
+		filename: ({ chunk }) => jsFilenameGenerator(chunk, path, glob, devMode, blockeditorDirectories),
+	},
+	module: {
+		rules: [
+			{
+				test: /\.(js|jsx)$/,
+				exclude: /node_modules/,
+				loader: 'babel-loader',
+				options: {
+					configFile: path.resolve(buildDir, '.babelrc'),
+				},
+			},
+			{
+				test: /\.(sa|sc|c)ss$/,
+				use: [
+					MiniCssExtractPlugin.loader,
+					'css-loader',
+					{
+						loader: 'postcss-loader',
+						options: {
+							postcssOptions: {
+								config: path.resolve(buildDir, 'postcss.config.js'),
+							},
+						},
+					},
+					{
+						loader: 'sass-loader',
+						options: {
+							implementation: require('node-sass'),
+						},
+					},
+				],
+			},
+			{
+				test: /\.(woff(2)?|ttf|eot)$/, // New way to add fonts for Webpack 5.
+				type: 'asset/resource',
+				generator: {
+					filename: './fonts/[name][ext]',
+				},
+			},
+			{
+				test: /\.(jpe?g|png|gif|ico|svg)$/i,
+				type: 'asset/resource',
+				generator: {
+					filename: (pathData) => {
+						const filePath = pathData.filename.replace('src/images/', '');
+						return `images/${filePath}`;
+					},
+				},
+			},
+		],
+	},
+	externals: {
+		jquery: 'jQuery'
+	},
+	optimization: {
+		minimize: true,
+		minimizer: [optimizeJS, optimizeCss],
+	},
+	plugins,
+};
+```
+
+The following explains the individual functionality.
+
 ### Webpack Utility for Assets
 The Webpack utility dynamically generates entry points based on your theme's JavaScript and SCSS files. When merging additional entries, always use the enqueuesMergeThemeWebpackEntries function to combine dynamically generated and custom entries to prevent conflict errors.
 
@@ -130,34 +339,36 @@ The Webpack utility dynamically generates entry points based on your theme's Jav
 
 ```javascript
 // Using CommonJS require
-const enqueuesThemeWebpackEntries = require('../../../path/to/enqueues/src/js/enqueues-theme-webpack-entries');
-const enqueuesMergeThemeWebpackEntries = require('../../../path/to/enqueues/src/js/enqueues-merge-theme-webpack-entries');
-const path = require('path');
-const glob = require('glob');
-
-// OR using ES6 import
-import enqueuesThemeWebpackEntries from '../../../path/to/enqueues/src/js/enqueues-theme-webpack-entries';
-import enqueuesMergeThemeWebpackEntries from '../../../path/to/enqueues/src/js/enqueues-merge-theme-webpack-entries';
 import path from 'path';
 const glob = require('glob');
 
+import enqueuesMergeWebpackEntries from '../../../mu-plugins/sciencealert/build-tools/vendor/thecodeco/enqueues/src/js/enqueues-merge-webpack-entries.js';
+import enqueuesThemeWebpackEntries from '../../../mu-plugins/sciencealert/build-tools/vendor/thecodeco/enqueues/src/js/enqueues-theme-webpack-entries.js';
+import enqueuesBlockEditorWebpackEntries from '../../../mu-plugins/sciencealert/build-tools/vendor/thecodeco/enqueues/src/js/enqueues-block-editor-webpack-entries.js';
 
-// Example of custom entries
+// Detecting Dev Mode
+const devMode = process.env.NODE_ENV !== 'production';
+
+// Directory locations.
+const rootDir = path.resolve(__dirname, '..'); // Project root.
+const buildDir = path.resolve(rootDir, 'build-tools'); // The build tools.
+const distDir = path.resolve(rootDir, 'dist'); // The compiled distribution assets.
+const nodeModulesDir = path.resolve(rootDir, 'build-tools/node_modules'); // The node module dir.
+
+// Custom entries (e.g., third-party libraries or other entries not in the root directory of the src js dir).
 const customEntries = {
     slick: ['./src/js/library/slick.js'],
 };
 
-const entries = enqueuesMergeThemeWebpackEntries(
-	enqueuesThemeWebpackEntries(path.resolve(__dirname), path, glob, 'src/js', 'src/scss'),
-	customEntries,
+const entries = enqueuesMergeWebpackEntries(
+	enqueuesThemeWebpackEntries( rootDir, path, glob ),
+	enqueuesBlockEditorWebpackEntries( rootDir, path, glob ),
+	...customEntries,
 );
 
 module.exports = {
     entry: entries,
-    output: {
-        filename: '[name].js',
-        path: path.resolve(__dirname, 'dist'),
-    },
+    // Other configurations...
 };
 ```
 
@@ -243,6 +454,43 @@ add_inline_asset_to_wp_head( 'style', 'critical-css', 'https://example.com/style
 
 // Adding a critical JS to the footer.
 add_inline_asset_to_wp_footer( 'script', 'custom-js', 'https://example.com/script.js', '/path/to/script.js', '1.0.0', [] );
+
+// In a controller.
+/**
+ * Render print styles to header.
+ *
+ * @return void
+ */
+protected function load_print_assets(): void {
+
+	// Asset Page Type File Data variables.
+	$directory             = get_template_directory();
+	$directory_uri         = get_template_directory_uri();
+	$file_name             = 'print';
+	$missing_local_warning = 'Run the npm build for the theme asset files. CSS, JS, fonts, and images etc.';
+
+	/**
+	 * Load the print style.
+	 */
+	$css_data = get_asset_page_type_file_data( $directory, $directory_uri, 'dist/css', $file_name, null, 'css', $missing_local_warning . " Missing {$file_name} CSS file." );
+
+	if ( $css_data ) {
+
+		$css_handle = $css_data['handle'];
+		$css_src    = $css_data['url'];
+		$css_file   = $css_data['file'];
+		$css_deps   = [];
+		$css_ver    = $css_data['ver'];
+		$css_media  = 'all';
+
+		if ( self::ASSET_RENDER_INLINE_PRINT_CSS ) {
+			add_inline_asset_to_wp_head( 'style', $css_handle, $css_src, $css_file, $css_ver, $css_deps );
+		} else {
+			wp_register_style( $css_handle, $css_src, $css_deps, $css_ver, $css_media );
+			wp_enqueue_style( $css_handle );
+		}
+	}
+}
 ```
 
 ## Available Filters
@@ -403,39 +651,63 @@ The plugin offers two key functions for asset loading:
 1. `asset_find_file_path()`: Finds the correct file path for an asset (either minified or standard) based on your environment.
 1. `display_maybe_missing_local_warning()`: Displays a warning if an expected asset is missing during local development.
 
-### Example Usage: Enqueuing a Custom JavaScript or CSS File
+### Example Usage: Enqueuing a Custom JavaScript or CSS File independent of the automatic main file for each page.
 ```php
-$directory     = get_template_directory();
-$directory_uri = get_template_directory_uri();
 
 // Specify the asset file name (without the extension) and type (either 'js' or 'css').
-$asset_filename = 'custom_asset';
-$asset_type     = 'js'; // Could be 'css' for stylesheets.
+$filename       = 'custom-asset';
+$directory      = get_template_directory();
+$directory_uri  = get_template_directory_uri();
+
+$css_path = asset_find_file_path( '/dist/css', $filename, 'css', $directory );
+
+// Local development warning if the asset is missing.
+display_maybe_missing_local_warning( $css_path, "Run npm build to generate the \"{$filename}\" file." );
+
+if ( $css_path ) {
+	// Enqueue theme CSS bundle.
+	wp_enqueue_style(
+		$filename,
+		"{$directory_uri}{$css_path}",
+		[],
+		filemtime( "{$directory}{$css_path}" ),
+		false
+	);
+}
 
 // Find the asset file path dynamically, checking for the correct version (minified or not).
-$asset_path = asset_find_file_path( "/dist/{$asset_type}", $asset_filename, $asset_type, $directory );
+$js_path = asset_find_file_path( '/dist/js', $filename, 'js', $directory );
 
 // Display a warning in local development if the asset is missing.
-display_maybe_missing_local_warning( $asset_path, "Run npm build to generate the \"{$asset_filename}\" file." );
+display_maybe_missing_local_warning( $js_path, "Run npm build to generate the \"{$filename}\" file." );
 
 // If the asset exists, enqueue it in WordPress.
-if ( $asset_path ) {
-    if ( 'js' === $asset_type ) {
-        wp_enqueue_script(
-            $asset_filename, // Unique handle for the script.
-            $directory_uri . $asset_path, // Full URL to the asset.
-            [], // Optional dependencies (empty array means no dependencies).
-            filemtime( $directory . $asset_path ), // Versioning based on the file modification time.
-            true // Load the script in the footer.
-        );
-    } elseif ( 'css' === $asset_type ) {
-        wp_enqueue_style(
-            $asset_filename, // Unique handle for the style.
-            $directory_uri . $asset_path, // Full URL to the asset.
-            [], // Optional dependencies.
-            filemtime( $directory . $asset_path ) // Versioning based on the file modification time.
-        );
-    }
+if ( $js_path ) {
+			
+	// Path to the generated asset.php file from the dependency extraction package.
+	$asset_path = $directory . str_replace( '.js', '.asset.php', $js_path );
+
+	// We want to throw an error if the asset file has not been generated.
+	if ( ! file_exists( $asset_path ) ) {
+		wp_die( "Run npm build for the Infinite Scroll asset files, \"{$filename}\" asset PHP file missing.", E_USER_ERROR ); // phpcs:ignore
+	}
+
+	$assets = require_once $asset_path;
+
+	wp_register_script(
+		$filename,
+		$directory_uri . $js_path,
+		$assets['dependencies'] ?? [],
+		$assets['version'] ?? filemtime( "{$directory}{$js_path}" ),
+		[
+			'strategy'  => 'async',
+			'in_footer' => true,
+		]
+	);
+
+	wp_enqueue_script( $filename );
+	
+	wp_localize_script( $filename, 'infiniteScrollPoolAdminPage', $this->get_localized_params() );
 }
 ```
 
