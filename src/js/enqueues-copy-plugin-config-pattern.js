@@ -64,7 +64,7 @@ function getCopyPluginConfigFontPattern(rootDir, distDir, srcDirPattern = '**/sr
  * @param {string} blockDir      - The directory containing the blocks within the block editor.
  * @returns {Object}             - A CopyPlugin pattern configuration for Gutenberg block JSON files.
  */
-function getCopyPluginConfigBlockJsonPattern(rootDir, distDir, srcDirPattern = '**/src', blockDir = '/block-editor/blocks' ) {
+function getCopyPluginConfigBlockJsonPattern(rootDir, distDir, srcDirPattern = '**/src', blockDir = 'block-editor/blocks' ) {
 	return {
 		context: rootDir,
 		from: `${srcDirPattern}/${blockDir}/**/block.json`,
@@ -72,7 +72,7 @@ function getCopyPluginConfigBlockJsonPattern(rootDir, distDir, srcDirPattern = '
 			const segments = pathContext.absoluteFilename.split('/');
 			const blockName = segments[segments.length - 2];
 			// Replace the base src path with distDir for final destination
-			return `${distDir}${blockDir}/${blockName}/block.json`;
+			return `${distDir}/${blockDir}/${blockName}/block.json`;
 		},
 		transform(content, absolutePath) {
 			const contentStr = content.toString();
@@ -84,7 +84,6 @@ function getCopyPluginConfigBlockJsonPattern(rootDir, distDir, srcDirPattern = '
 	};
 }
 
-
 /**
  * Generates a CopyPlugin configuration for copying Gutenberg block PHP render files.
  *
@@ -94,7 +93,7 @@ function getCopyPluginConfigBlockJsonPattern(rootDir, distDir, srcDirPattern = '
  * @param {string} blockDir      - The directory containing the blocks within the block editor.
  * @returns {Object} A CopyPlugin pattern configuration for Gutenberg block PHP render files.
  */
-function getCopyPluginConfigRenderPhpPattern(rootDir, distDir, srcDirPattern = '**/src', blockDir = '/block-editor/blocks' ) {
+function getCopyPluginConfigRenderPhpPattern(rootDir, distDir, srcDirPattern = '**/src', blockDir = 'block-editor/blocks' ) {
 	return {
 		context: rootDir,
 		from: `${srcDirPattern}/${blockDir}/**/render.php`,
@@ -102,7 +101,7 @@ function getCopyPluginConfigRenderPhpPattern(rootDir, distDir, srcDirPattern = '
 			const segments = pathContext.absoluteFilename.split('/');
 			const blockName = segments[segments.length - 2];
 			// Replace the base src path with distDir for final destination
-			return `${distDir}${blockDir}/${blockName}/render.php`;
+			return `${distDir}/${blockDir}/${blockName}/render.php`;
 		},
 		transform(content, absolutePath) {
 			const contentStr = content.toString();

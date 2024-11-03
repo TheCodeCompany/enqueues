@@ -144,8 +144,6 @@ import enqueuesMergeWebpackEntries from '../../../mu-plugins/sciencealert/build-
 import enqueuesThemeWebpackEntries from '../../../mu-plugins/sciencealert/build-tools/vendor/thecodeco/enqueues/src/js/enqueues-theme-webpack-entries.js';
 import enqueuesBlockEditorWebpackEntries from '../../../mu-plugins/sciencealert/build-tools/vendor/thecodeco/enqueues/src/js/enqueues-block-editor-webpack-entries.js';
 import enqueuesGetCopyPluginConfigPattern from '../../../mu-plugins/sciencealert/build-tools/vendor/thecodeco/enqueues/src/js/enqueues-copy-plugin-config-pattern.js';
-import cssFilenameGenerator from '../../../mu-plugins/sciencealert/build-tools/vendor/thecodeco/enqueues/src/js/enqueues-css-filename-generator.js';
-import jsFilenameGenerator from '../../../mu-plugins/sciencealert/build-tools/vendor/thecodeco/enqueues/src/js/enqueues-js-filename-generator.js';
 
 // Detecting Dev Mode
 const devMode = process.env.NODE_ENV !== 'production';
@@ -169,9 +167,21 @@ const blockeditorDirectories = {
 };
 
 const cssPlugin = new MiniCssExtractPlugin({
-    filename: ({ chunk }) => cssFilenameGenerator(chunk, blockeditorDirectories, devMode),
+    filename: ({ chunk }) => {
+		if (Object.keys(blockeditorDirectories).some(key => chunk.name.startsWith(key))) {
+			// Check if chunk name contains 'index', 'style', or 'view'
+			if (['/index', '/style', '/view'].some(suffix => chunk.name.includes(suffix))) {
+				return `block-editor/${chunk.name}.css`;
+			} else {
+				// Default to `index.css` if no specific suffix is found
+				return `block-editor/${chunk.name}/index.css`;
+			}
+		} else {
+			const baseName = path.basename(chunk.name);
+			return devMode ? `css/${baseName}.css` : `css/${baseName}.min.css`;
+		}
+	},	
 });
-
 /**
  * BlockEditor files and folders to remove, which is created due to MiniCssExtractPlugin.
  *
@@ -267,7 +277,18 @@ export default {
 	output: {
         path: distDir,
 		clean: true,
-		filename: ({ chunk }) => jsFilenameGenerator(chunk, path, glob, devMode, blockeditorDirectories),
+		filename: ({ chunk }) => {
+			if (Object.keys(blockeditorDirectories).some(key => chunk.name.startsWith(key))) {
+				if (['/script', '/index', '/view'].some(suffix => chunk.name.includes(suffix))) {
+					return `block-editor/${chunk.name}.js`;
+				} else {
+					return `block-editor/${chunk.name}/index.js`;
+				}
+			} else {
+				const baseName = path.basename(chunk.name);
+				return devMode ? `js/${baseName}.js` : `js/${baseName}.min.js`;
+			}
+		},
 	},
 	module: {
 		rules: [
