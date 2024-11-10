@@ -13,6 +13,7 @@ namespace Enqueues\Controller;
 
 use Enqueues\Base\Main\Controller;
 use function Enqueues\asset_find_file_path;
+use function Enqueues\get_encoded_svg_icon;
 use function Enqueues\is_local;
 use function Enqueues\is_block_editor_features_on;
 use function Enqueues\get_translation_domain;
@@ -51,7 +52,7 @@ class BlockEditorRegistrationController extends Controller {
 
 		$directory                  = get_template_directory();
 		$block_editor_dist_dir_path = get_block_editor_dist_dir();
-		$block_editor_dist_dir      = "{$directory}{$block_editor_dist_dir_path}";
+		$block_editor_dist_dir      = "{$directory}{$block_editor_dist_dir_path}/blocks";
 
 		if ( ! is_dir( $block_editor_dist_dir ) ) {
 			if ( is_local() ) {

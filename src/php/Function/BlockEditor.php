@@ -24,7 +24,7 @@ function get_block_editor_namespace(): string {
  * @return string
  */
 function get_block_editor_dist_dir(): string {
-	return (string) apply_filters( 'enqueues_block_editor_dist_dir', '/dist/block-editor/blocks' );
+	return (string) apply_filters( 'enqueues_block_editor_dist_dir', '/dist/block-editor' );
 }
 
 /**
