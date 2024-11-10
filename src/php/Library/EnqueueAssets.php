@@ -111,7 +111,7 @@ class EnqueueAssets {
 	 */
 	public function get_js_config( $js_handle ) {
 
-		$name = string_camelcaseify( $js_handle );
+		$name = string_camelcaseify( $js_handle ) . 'Config';
 
 		// Default config.
 		$data = [ 'ajaxUrl' => admin_url( 'admin-ajax.php' ) ];
