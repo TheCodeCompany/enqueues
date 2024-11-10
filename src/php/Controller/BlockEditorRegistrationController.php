@@ -130,48 +130,61 @@ class BlockEditorRegistrationController extends Controller {
 	 */
 	private function enqueue_assets( $type, $context, $register_only = true ): void {
 
-		$directory              = get_template_directory();
-		$directory_uri          = get_template_directory_uri();
-		$block_editor_dist_dir  = "{$directory}/dist/block-editor/{$type}";
-		$enqueue_asset_dirs     = array_filter( glob( "{$block_editor_dist_dir}/*" ), 'is_dir' );
-		$block_editor_namespace = get_block_editor_namespace();
+		$directory                  = get_template_directory();
+		$directory_uri              = get_template_directory_uri();
+		$block_editor_dist_dir_path = get_block_editor_dist_dir();
+		$block_editor_dist_dir      = "{$directory}{$block_editor_dist_dir_path}/{$type}";
+		$enqueue_asset_dirs         = array_filter( glob( "{$block_editor_dist_dir}/*" ), 'is_dir' );
+		$block_editor_namespace     = get_block_editor_namespace();
 
 		foreach ( $enqueue_asset_dirs as $enqueue_asset_dir ) {
 			$filename = basename( $enqueue_asset_dir );
-			$name     = apply_filters( "enqueues_block_editor_name_{$type}_{$filename}", "{$block_editor_namespace}/{$filename}" );
 
 			// Enqueue CSS bundle.
 			$css_filetype = $this->get_filename_from_context( $context, 'css' );
-			$css_path     = asset_find_file_path( "dist/block-editor/{$type}/{$filename}", $css_filetype, 'css', $directory );
+			$css_path     = asset_find_file_path( "{$block_editor_dist_dir_path}/{$type}/{$filename}", $css_filetype, 'css', $directory );
 
 			if ( $css_path ) {
-				wp_register_style( "{$name}-{$css_filetype}", "{$directory_uri}{$css_path}", [], filemtime( "{$directory}{$css_path}" ) );
+
+				$handle = apply_filters( "enqueues_block_editor_handle_css_{$type}_{$filename}", "{$filename}-{$css_filetype}" );
+				wp_register_style( $handle, "{$directory_uri}{$css_path}", [], filemtime( "{$directory}{$css_path}" ) );
 
 				if ( ! $register_only ) {
-					wp_enqueue_style( "{$name}-{$css_filetype}" );
+					wp_enqueue_style( $handle );
 				}
 			}
 
 			// Enqueue JS bundle.
 			$js_filetype = $this->get_filename_from_context( $context, 'js' );
-			$js_path     = asset_find_file_path( "dist/block-editor/{$type}/{$filename}", $js_filetype, 'js', $directory );
+			$js_path     = asset_find_file_path( "{$block_editor_dist_dir_path}/{$type}/{$filename}", $js_filetype, 'js', $directory );
 
 			if ( $js_path ) {
 				$enqueue_asset_path = "{$directory}/" . ltrim( str_replace( '.js', '.asset.php', $js_path ), '/' );
 
 				if ( file_exists( $enqueue_asset_path ) ) {
+
+					$handle = apply_filters( "enqueues_block_editor_handle_js_{$type}_{$filename}", "{$filename}-{$js_filetype}" );
+
+					$args = [
+						'strategy' => 'async',
+						'in_footer' => true,
+					];
+
+					$args = apply_filters( "enqueues_block_editor_handle_js_args_{$type}_{$filename}", $args );
+
 					$assets = include $enqueue_asset_path;
-					wp_register_script( "{$name}-{$js_filetype}", "{$directory_uri}{$js_path}", $assets['dependencies'], $assets['version'], true );
+
+					wp_register_script( $handle, "{$directory_uri}{$js_path}", $assets['dependencies'], $assets['version'], $args );
 
 					if ( ! $register_only ) {
-						wp_enqueue_script( "{$name}-{$js_filetype}" );
+						wp_enqueue_script( $handle );
 					}
 
 					$localized_data     = apply_filters( "enqueues_block_editor_localized_data_{$type}_{$filename}", [] );
 					$localized_var_name = apply_filters( "enqueues_block_editor_localized_data_var_name_{$type}_{$filename}", 'customBlockEditor' . ucfirst( $type ) . 'Config' );
 
 					if ( $localized_data ) {
-						wp_localize_script( "{$name}-{$js_filetype}", $localized_var_name, $localized_data );
+						wp_localize_script( $handle, $localized_var_name, $localized_data );
 					}
 				}
 			}
@@ -216,7 +229,7 @@ class BlockEditorRegistrationController extends Controller {
 	protected function get_filename_from_context( $context, $type ) {
 		switch ( $context ) {
 			case 'editor':
-				return 'index';
+				return 'js' === $type ? 'index' : 'editor';
 			case 'view':
 				return 'view';
 			default:

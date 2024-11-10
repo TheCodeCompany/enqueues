@@ -169,8 +169,7 @@ const blockeditorDirectories = {
 const cssPlugin = new MiniCssExtractPlugin({
     filename: ({ chunk }) => {
 		if (Object.keys(blockeditorDirectories).some(key => chunk.name.startsWith(key))) {
-			// Check if chunk name contains 'index', 'style', or 'view'
-			if (['/index', '/style', '/view'].some(suffix => chunk.name.includes(suffix))) {
+			if (['/index', '/style', '/view', '/editor'].some(suffix => chunk.name.includes(suffix))) {
 				return `block-editor/${chunk.name}.css`;
 			} else {
 				// Default to `index.css` if no specific suffix is found
@@ -180,7 +179,7 @@ const cssPlugin = new MiniCssExtractPlugin({
 			const baseName = path.basename(chunk.name);
 			return devMode ? `css/${baseName}.css` : `css/${baseName}.min.css`;
 		}
-	},	
+	},
 });
 /**
  * BlockEditor files and folders to remove, which is created due to MiniCssExtractPlugin.
@@ -279,7 +278,7 @@ export default {
 		clean: true,
 		filename: ({ chunk }) => {
 			if (Object.keys(blockeditorDirectories).some(key => chunk.name.startsWith(key))) {
-				if (['/script', '/index', '/view'].some(suffix => chunk.name.includes(suffix))) {
+				if (['/index', '/script', '/view', '/editor'].some(suffix => chunk.name.includes(suffix))) {
 					return `block-editor/${chunk.name}.js`;
 				} else {
 					return `block-editor/${chunk.name}/index.js`;
@@ -543,7 +542,9 @@ The plugin provides hooks and filters to integrate with WordPress block editor (
 * `enqueues_block_editor_dist_dir`: Customize the block editor assets directory. Default: '/dist/block-editor/blocks'.
 * `enqueues_block_editor_categories`: Add custom categories for Gutenberg blocks.
 * `enqueues_block_editor_localized_data_{$type}_{$block}`: Filter localized data passed to block-specific scripts based on type (blocks, plugins, or extensions) and block name.
-* `enqueues_block_editor_name_{$type}_{$block}`: Customize the registered name of a block based on the block type (blocks, plugins, or extensions) and name.
+* `enqueues_block_editor_handle_css_{$type}_{$block}`: Customize the handle used for registering the stylesheet.
+* `enqueues_block_editor_handle_js_{$type}_{$block}`: Customize the handle used for registering the script.
+* `enqueues_block_editor_handle_js_args_{$type}_{$block}`: Customize the args used for registering the script.
 * `enqueues_block_editor_localized_data_var_name_{$type}_{$block}`: Customize the variable name for localized block editor data passed to scripts.
 
 ## Default Behavior
