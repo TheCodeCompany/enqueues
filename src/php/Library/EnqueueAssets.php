@@ -14,7 +14,6 @@ use RecursiveDirectoryIterator;
 use function Enqueues\get_cache_ttl;
 use function Enqueues\get_page_type;
 use function Enqueues\is_cache_enabled;
-use function Enqueues\string_camelcaseify;
 
 /**
  * Class responsible for enqueuing the theme's main stylesheet and scripts based on page type, template, or post type.
@@ -111,7 +110,7 @@ class EnqueueAssets {
 	 */
 	public function get_js_config( $js_handle ) {
 
-		$name = string_camelcaseify( $js_handle ) . 'Config';
+		$name = 'mainConfig';
 
 		// Default config.
 		$data = [ 'ajaxUrl' => admin_url( 'admin-ajax.php' ) ];
