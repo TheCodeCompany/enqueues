@@ -19,6 +19,7 @@ use function Enqueues\get_translation_domain;
 use function Enqueues\get_block_editor_namespace;
 use function Enqueues\get_block_editor_dist_dir;
 use function Enqueues\get_block_editor_categories;
+use function Enqueues\string_camelcaseify;
 
 /**
  * Controller responsible for Block Editor related functionality.
@@ -190,7 +191,7 @@ class BlockEditorRegistrationController extends Controller {
 						}
 
 						$localized_data     = apply_filters( "enqueues_block_editor_localized_data_{$type}_{$filename}", [] );
-						$localized_var_name = apply_filters( "enqueues_block_editor_localized_data_var_name_{$type}_{$filename}", 'customBlockEditor' . ucfirst( $type ) . 'Config' );
+						$localized_var_name = apply_filters( "enqueues_block_editor_localized_data_var_name_{$type}_{$filename}", string_camelcaseify( "blockEditor {$type} {$filename} Config" ) );
 	
 						if ( $localized_data ) {
 							wp_localize_script( $handle, $localized_var_name, $localized_data );
