@@ -543,7 +543,11 @@ The plugin provides hooks and filters to integrate with WordPress block editor (
 * `enqueues_block_editor_categories`: Add custom categories for Gutenberg blocks.
 * `enqueues_block_editor_localized_data_{$type}_{$block}`: Filter localized data passed to block-specific scripts based on type (blocks, plugins, or extensions) and block name.
 * `enqueues_block_editor_handle_css_{$type}_{$block}`: Customize the handle used for registering the stylesheet.
+* `enqueues_block_editor_register_style_{$type}_{$block}`: Should the stylesheet be registered. Default: true.
+* `enqueues_block_editor_enqueue_style_{$type}_{$block}`: Should the stylesheet be enqueued. Default: bool e.g., blocks false, and plugins true.
 * `enqueues_block_editor_handle_js_{$type}_{$block}`: Customize the handle used for registering the script.
+* `enqueues_block_editor_register_script_{$type}_{$block}`: Should the script be registered. Default: true.
+* `enqueues_block_editor_enqueue_script_{$type}_{$block}`: Should the script be enqueued. Default: bool e.g., blocks false, and plugins true.
 * `enqueues_block_editor_handle_js_args_{$type}_{$block}`: Customize the args used for registering the script.
 * `enqueues_block_editor_localized_data_var_name_{$type}_{$block}`: Customize the variable name for localized block editor data passed to scripts.
 

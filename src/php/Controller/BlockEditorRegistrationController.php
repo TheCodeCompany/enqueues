@@ -144,10 +144,17 @@ class BlockEditorRegistrationController extends Controller {
 			if ( $css_path ) {
 
 				$handle = apply_filters( "enqueues_block_editor_handle_css_{$type}_{$filename}", "{$filename}-{$css_filetype}" );
-				wp_register_style( $handle, "{$directory_uri}{$css_path}", [], filemtime( "{$directory}{$css_path}" ) );
 
-				if ( ! $register_only ) {
-					wp_enqueue_style( $handle );
+				$register_style = apply_filters( "enqueues_block_editor_register_style_{$type}_{$filename}", true );
+
+				if ( $register_style ) {
+					wp_register_style( $handle, "{$directory_uri}{$css_path}", [], filemtime( "{$directory}{$css_path}" ) );
+
+					$register_only = apply_filters( "enqueues_block_editor_enqueue_style_{$type}_{$filename}", $register_only );
+					
+					if ( ! $register_only ) {
+						wp_enqueue_style( $handle );
+					}
 				}
 			}
 
@@ -171,17 +178,23 @@ class BlockEditorRegistrationController extends Controller {
 
 					$assets = include $enqueue_asset_path;
 
-					wp_register_script( $handle, "{$directory_uri}{$js_path}", $assets['dependencies'], $assets['version'], $args );
+					$register_script = apply_filters( "enqueues_block_editor_register_script_{$type}_{$filename}", true );
 
-					if ( ! $register_only ) {
-						wp_enqueue_script( $handle );
-					}
+					if ( $register_script ) {
+						wp_register_script( $handle, "{$directory_uri}{$js_path}", $assets['dependencies'], $assets['version'], $args );
 
-					$localized_data     = apply_filters( "enqueues_block_editor_localized_data_{$type}_{$filename}", [] );
-					$localized_var_name = apply_filters( "enqueues_block_editor_localized_data_var_name_{$type}_{$filename}", 'customBlockEditor' . ucfirst( $type ) . 'Config' );
+						$register_only = apply_filters( "enqueues_block_editor_enqueue_script_{$type}_{$filename}", $register_only );
+						
+						if ( ! $register_only ) {
+							wp_enqueue_script( $handle );
+						}
 
-					if ( $localized_data ) {
-						wp_localize_script( $handle, $localized_var_name, $localized_data );
+						$localized_data     = apply_filters( "enqueues_block_editor_localized_data_{$type}_{$filename}", [] );
+						$localized_var_name = apply_filters( "enqueues_block_editor_localized_data_var_name_{$type}_{$filename}", 'customBlockEditor' . ucfirst( $type ) . 'Config' );
+	
+						if ( $localized_data ) {
+							wp_localize_script( $handle, $localized_var_name, $localized_data );
+						}
 					}
 				}
 			}
