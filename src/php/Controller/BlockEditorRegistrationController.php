@@ -19,6 +19,7 @@ use function Enqueues\get_translation_domain;
 use function Enqueues\get_block_editor_namespace;
 use function Enqueues\get_block_editor_dist_dir;
 use function Enqueues\get_block_editor_categories;
+use function Enqueues\string_camelcaseify;
 
 /**
  * Controller responsible for Block Editor related functionality.
@@ -144,10 +145,20 @@ class BlockEditorRegistrationController extends Controller {
 			if ( $css_path ) {
 
 				$handle = apply_filters( "enqueues_block_editor_handle_css_{$type}_{$filename}", "{$filename}-{$css_filetype}" );
-				wp_register_style( $handle, "{$directory_uri}{$css_path}", [], filemtime( "{$directory}{$css_path}" ) );
 
-				if ( ! $register_only ) {
-					wp_enqueue_style( $handle );
+				$register_style = apply_filters( "enqueues_block_editor_register_style_{$type}_{$filename}", true );
+
+				if ( $register_style ) {
+					$css_deps = apply_filters( "enqueues_block_editor_css_dependencies_{$type}_{$filename}", [] );
+					$css_ver  = apply_filters( "enqueues_block_editor_css_version_{$type}_{$filename}", filemtime( "{$directory}{$css_path}" ) );
+
+					wp_register_style( $handle, "{$directory_uri}{$css_path}", $css_deps, $css_ver );
+
+					$register_only = apply_filters( "enqueues_block_editor_enqueue_style_{$type}_{$filename}", $register_only );
+					
+					if ( ! $register_only ) {
+						wp_enqueue_style( $handle );
+					}
 				}
 			}
 
@@ -156,29 +167,35 @@ class BlockEditorRegistrationController extends Controller {
 			$js_path     = asset_find_file_path( "{$block_editor_dist_dir_path}/{$type}/{$filename}", $js_filetype, 'js', $directory );
 
 			if ( $js_path ) {
+				
+				$handle = apply_filters( "enqueues_block_editor_js_handle_{$type}_{$filename}", "{$filename}-{$js_filetype}" );
+
+				$args = [
+					'strategy'  => 'async',
+					'in_footer' => true,
+				];
+
+				$args = apply_filters( "enqueues_block_editor_js_args_{$type}_{$filename}", $args );
+
 				$enqueue_asset_path = "{$directory}/" . ltrim( str_replace( '.js', '.asset.php', $js_path ), '/' );
+				$assets             = file_exists( $enqueue_asset_path ) ? include $enqueue_asset_path : [];
 
-				if ( file_exists( $enqueue_asset_path ) ) {
+				$register_script = apply_filters( "enqueues_block_editor_js_register_script_{$type}_{$filename}", true );
 
-					$handle = apply_filters( "enqueues_block_editor_handle_js_{$type}_{$filename}", "{$filename}-{$js_filetype}" );
+				if ( $register_script ) {
+					$js_deps = apply_filters( "enqueues_block_editor_js_dependencies_{$type}_{$filename}", $assets['dependencies'] ?? [] );
+					$js_ver  = apply_filters( "enqueues_block_editor_js_version_{$type}_{$filename}", $assets['version'] ?? filemtime( "{$directory}{$js_path}" ) );
 
-					$args = [
-						'strategy' => 'async',
-						'in_footer' => true,
-					];
+					wp_register_script( $handle, "{$directory_uri}{$js_path}", $js_deps, $js_ver, $args );
 
-					$args = apply_filters( "enqueues_block_editor_handle_js_args_{$type}_{$filename}", $args );
-
-					$assets = include $enqueue_asset_path;
-
-					wp_register_script( $handle, "{$directory_uri}{$js_path}", $assets['dependencies'], $assets['version'], $args );
-
+					$register_only = apply_filters( "enqueues_block_editor_js_enqueue_script_{$type}_{$filename}", $register_only );
+					
 					if ( ! $register_only ) {
 						wp_enqueue_script( $handle );
 					}
 
-					$localized_data     = apply_filters( "enqueues_block_editor_localized_data_{$type}_{$filename}", [] );
-					$localized_var_name = apply_filters( "enqueues_block_editor_localized_data_var_name_{$type}_{$filename}", 'customBlockEditor' . ucfirst( $type ) . 'Config' );
+					$localized_data     = apply_filters( "enqueues_block_editor_js_localized_data_{$type}_{$filename}", [] );
+					$localized_var_name = apply_filters( "enqueues_block_editor_js_localized_data_var_name_{$type}_{$filename}", string_camelcaseify( "blockEditor {$type} {$filename} Config" ) );
 
 					if ( $localized_data ) {
 						wp_localize_script( $handle, $localized_var_name, $localized_data );
