@@ -554,9 +554,11 @@ The plugin provides hooks and filters to integrate with WordPress block editor (
 * `enqueues_block_editor_js_register_script_{$type}_{$block}`: Should the script be registered. Default: true.
 * `enqueues_block_editor_js_dependencies_{$type}_{$filename}`: Alter the script dependencies.
 * `enqueues_block_editor_js_version_{$type}_{$filename}`: Alter the script version.
+* `enqueues_block_editor_js_args_{$type}_{$filename}`: Alter the script arguments. Default 'strategy' => 'async' and 'in_footer' => true.
 * `enqueues_block_editor_js_enqueue_script_{$type}_{$block}`: Should the script be enqueued. Default: bool e.g., blocks false, and plugins true.
 * `enqueues_block_editor_js_args_{$type}_{$block}`: Customize the args used for registering the script.
 * `enqueues_block_editor_js_localized_data_var_name_{$type}_{$block}`: Customize the variable name for localized block editor data passed to scripts.
+* `enqueues_block_editor_js_localized_data_{$type}_{$block}`: Customize the data array for localized js variables.
 
 ## Default Behavior
 * Default Assets: The plugin will default to main.css and main.js if no specific assets are found for a page type or template.
