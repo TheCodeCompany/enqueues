@@ -149,7 +149,8 @@ class BlockEditorRegistrationController extends Controller {
 				$register_style = apply_filters( "enqueues_block_editor_register_style_{$type}_{$filename}", true );
 
 				if ( $register_style ) {
-					wp_register_style( $handle, "{$directory_uri}{$css_path}", [], filemtime( "{$directory}{$css_path}" ) );
+					$style_dependencies = apply_filters( "enqueues_block_editor_style_dependencies_{$type}_{$filename}", [] );
+					wp_register_style( $handle, "{$directory_uri}{$css_path}", $style_dependencies, filemtime( "{$directory}{$css_path}" ) );
 
 					$register_only = apply_filters( "enqueues_block_editor_enqueue_style_{$type}_{$filename}", $register_only );
 					
@@ -182,7 +183,9 @@ class BlockEditorRegistrationController extends Controller {
 					$register_script = apply_filters( "enqueues_block_editor_register_script_{$type}_{$filename}", true );
 
 					if ( $register_script ) {
-						wp_register_script( $handle, "{$directory_uri}{$js_path}", $assets['dependencies'], $assets['version'], $args );
+						$script_dependencies = apply_filters( "enqueues_block_editor_style_dependencies_{$type}_{$filename}", $assets['dependencies'] ?? [] );
+
+						wp_register_script( $handle, "{$directory_uri}{$js_path}", $script_dependencies, $assets['version'], $args );
 
 						$register_only = apply_filters( "enqueues_block_editor_enqueue_script_{$type}_{$filename}", $register_only );
 						
