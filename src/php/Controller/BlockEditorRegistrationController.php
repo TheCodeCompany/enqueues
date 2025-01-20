@@ -183,7 +183,7 @@ class BlockEditorRegistrationController extends Controller {
 					$register_script = apply_filters( "enqueues_block_editor_register_script_{$type}_{$filename}", true );
 
 					if ( $register_script ) {
-						$script_dependencies = apply_filters( "enqueues_block_editor_style_dependencies_{$type}_{$filename}", $assets['dependencies'] ?? [] );
+						$script_dependencies = apply_filters( "enqueues_block_editor_script_dependencies_{$type}_{$filename}", $assets['dependencies'] ?? [] );
 
 						wp_register_script( $handle, "{$directory_uri}{$js_path}", $script_dependencies, $assets['version'], $args );
 
