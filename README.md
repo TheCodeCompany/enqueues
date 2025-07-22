@@ -560,6 +560,36 @@ The plugin provides hooks and filters to integrate with WordPress block editor (
 * `enqueues_block_editor_js_localized_data_var_name_{$type}_{$block}`: Customize the variable name for localized block editor data passed to scripts.
 * `enqueues_block_editor_js_localized_data_{$type}_{$block}`: Customize the data array for localized js variables.
 
+### Theme Asset Filters
+The plugin provides hooks and filters to customize the enqueuing of theme CSS and JS assets. These allow you to alter handles, dependencies, versions, args, and more for each asset file:
+
+#### Theme CSS Filters
+* `enqueues_theme_css_handle_{$filename}`: Customize the handle used for registering the style.
+* `enqueues_theme_css_register_style_{$filename}`: Should the style be registered. Default: true.
+* `enqueues_theme_css_dependencies_{$filename}`: Alter the style dependencies.
+* `enqueues_theme_css_version_{$filename}`: Alter the style version.
+* `enqueues_theme_css_enqueue_style_{$filename}`: Should the style be enqueued. Default: true.
+* `enqueues_theme_css_media_{$filename}`: Alter the media attribute for the style. Default: 'all'.
+
+#### Theme JS Filters
+* `enqueues_theme_js_handle_{$filename}`: Customize the handle used for registering the script.
+* `enqueues_theme_js_register_script_{$filename}`: Should the script be registered. Default: true.
+* `enqueues_theme_js_dependencies_{$filename}`: Alter the script dependencies.
+* `enqueues_theme_js_version_{$filename}`: Alter the script version.
+* `enqueues_theme_js_args_{$filename}`: Alter the script arguments (e.g., 'strategy', 'in_footer').
+* `enqueues_theme_js_enqueue_script_{$filename}`: Should the script be enqueued. Default: true.
+* `enqueues_theme_js_localized_data_var_name_{$filename}`: Customize the variable name for localized JS data.
+* `enqueues_theme_js_localized_data_{$filename}`: Customize the data array for localized JS variables.
+
+#### Example Usage: Customizing Main JS Args
+```php
+add_filter( 'enqueues_theme_js_args_main', function( $args ) {
+    $args['strategy'] = 'defer';
+    $args['in_footer'] = false;
+    return $args;
+});
+```
+
 ## Default Behavior
 * Default Assets: The plugin will default to main.css and main.js if no specific assets are found for a page type or template.
 * jQuery: By default, jQuery is moved to the footer to enhance performance (see filter to change this global or per page).
