@@ -81,18 +81,25 @@ class ThemeEnqueueMainController extends Controller {
 
 		if ( $css_data ) {
 
-			$css_handle = $css_data['handle'];
+			$css_handle = apply_filters( "enqueues_theme_css_handle_{$css_data['handle']}", $css_data['handle'] );
 			$css_src    = $css_data['url'];
 			$css_file   = $css_data['file'];
-			$css_deps   = [];
-			$css_ver    = $css_data['ver'];
-			$css_media  = 'all';
+			$css_deps   = apply_filters( "enqueues_theme_css_dependencies_{$css_data['handle']}", [] );
+			$css_ver    = apply_filters( "enqueues_theme_css_version_{$css_data['handle']}", $css_data['ver'] );
+			$css_media  = apply_filters( "enqueues_theme_css_media_{$css_data['handle']}", 'all' );
 
-			if ( $enqueue_assets->render_css_inline( $css_handle ) ) {
-				add_inline_asset_to_wp_head( 'style', $css_handle, $css_src, $css_file, $css_ver, $css_deps );
-			} else {
-				wp_register_style( $css_handle, $css_src, $css_deps, $css_ver, $css_media );
-				wp_enqueue_style( $css_handle );
+			$register_style = apply_filters( "enqueues_theme_css_register_style_{$css_data['handle']}", true );
+			$enqueue_style  = apply_filters( "enqueues_theme_css_enqueue_style_{$css_data['handle']}", true );
+
+			if ( $register_style ) {
+				if ( $enqueue_assets->render_css_inline( $css_handle ) ) {
+					add_inline_asset_to_wp_head( 'style', $css_handle, $css_src, $css_file, $css_ver, $css_deps );
+				} else {
+					wp_register_style( $css_handle, $css_src, $css_deps, $css_ver, $css_media );
+					if ( $enqueue_style ) {
+						wp_enqueue_style( $css_handle );
+					}
+				}
 			}
 		}
 
@@ -103,27 +110,48 @@ class ThemeEnqueueMainController extends Controller {
 
 		if ( $js_data ) {
 
-			$js_handle = $js_data['handle'];
+			$js_handle = apply_filters( "enqueues_theme_js_handle_{$js_data['handle']}", $js_data['handle'] );
 			$js_src    = $js_data['url'];
 			$js_file   = $js_data['file'];
-			$js_deps   = [ 'jquery', 'wp-i18n', 'wp-api', 'underscore' ];
-			$js_ver    = $js_data['ver'];
-			$js_args   = [ 
-				'in_footer' => true,
-				'strategy'  => 'async',
-			];
 
-			if ( $enqueue_assets->render_js_inline( $js_handle ) ) {
-				add_inline_asset_to_wp_footer( 'script', $js_handle, $js_src, $js_file, $js_ver, $js_deps );
-			} else {
-				wp_register_script( $js_handle, $js_src, $js_deps, $js_ver, $js_args );
-				wp_enqueue_script( $js_handle );
+			// Attempt to load .asset.php file for dependencies and version.
+			$asset_php_path = $directory . '/dist/js/' . $js_data['handle'] . '.asset.php';
+			$asset_php      = file_exists( $asset_php_path ) ? include $asset_php_path : [];
+			$default_deps   = $asset_php['dependencies'] ?? [ 'jquery', 'wp-i18n', 'wp-api', 'underscore' ];
+			$default_ver    = $asset_php['version'] ?? $js_data['ver'];
 
-				[ $name, $data ] = $enqueue_assets->get_js_config( $js_handle );
+			$js_deps = apply_filters( "enqueues_theme_js_dependencies_{$js_data['handle']}", $default_deps );
+			$js_ver  = apply_filters( "enqueues_theme_js_version_{$js_data['handle']}", $default_ver );
+			$js_args = apply_filters(
+				"enqueues_theme_js_args_{$js_data['handle']}",
+				[
+					'in_footer' => true,
+					'strategy'  => 'async',
+				]
+			);
 
-				// Localize the script with the data.
-				if ( $name && $data ) {
-					wp_localize_script( $js_handle, $name, $data );
+			$register_script = apply_filters( "enqueues_theme_js_register_script_{$js_data['handle']}", true );
+			$enqueue_script  = apply_filters( "enqueues_theme_js_enqueue_script_{$js_data['handle']}", true );
+
+			if ( $register_script ) {
+				if ( $enqueue_assets->render_js_inline( $js_handle ) ) {
+					add_inline_asset_to_wp_footer( 'script', $js_handle, $js_src, $js_file, $js_ver, $js_deps );
+				} else {
+					wp_register_script( $js_handle, $js_src, $js_deps, $js_ver, $js_args );
+					if ( $enqueue_script ) {
+						wp_enqueue_script( $js_handle );
+					}
+
+					[ $name, $data ] = $enqueue_assets->get_js_config( $js_handle );
+
+					// Allow filtering of localized data and var name.
+					$localized_data     = apply_filters( "enqueues_theme_js_localized_data_{$js_data['handle']}", $data );
+					$localized_var_name = apply_filters( "enqueues_theme_js_localized_data_var_name_{$js_data['handle']}", $name );
+
+					// Localize the script with the data.
+					if ( $localized_var_name && $localized_data ) {
+						wp_localize_script( $js_handle, $localized_var_name, $localized_data );
+					}
 				}
 			}
 		}
