@@ -552,16 +552,32 @@ The plugin provides hooks and filters to integrate with WordPress block editor (
 #### Block Editor JS Filters
 * `enqueues_block_editor_js_handle_{$type}_{$block}`: Customize the handle used for registering the script.
 * `enqueues_block_editor_js_register_script_{$type}_{$block}`: Should the script be registered. Default: true.
-* `enqueues_block_editor_js_dependencies_{$type}_{$filename}`: Alter the script dependencies.
-* `enqueues_block_editor_js_version_{$type}_{$filename}`: Alter the script version.
+* `enqueues_block_editor_js_dependencies_{$type}_{$filename}`: Alter the script dependencies. Default is from `.asset.php` if present.
+* `enqueues_block_editor_js_version_{$type}_{$filename}`: Alter the script version. Default is from `.asset.php` if present.
 * `enqueues_block_editor_js_args_{$type}_{$filename}`: Alter the script arguments. Default 'strategy' => 'async' and 'in_footer' => true.
 * `enqueues_block_editor_js_enqueue_script_{$type}_{$block}`: Should the script be enqueued. Default: bool e.g., blocks false, and plugins true.
 * `enqueues_block_editor_js_args_{$type}_{$block}`: Customize the args used for registering the script.
 * `enqueues_block_editor_js_localized_data_var_name_{$type}_{$block}`: Customize the variable name for localized block editor data passed to scripts.
 * `enqueues_block_editor_js_localized_data_{$type}_{$block}`: Customize the data array for localized js variables.
 
+**Example: Using .asset.php for block JS dependencies/version**
+If you build your block JS with the WordPress dependency extraction plugin, a file like `dist/block-editor/blocks/my-block/index.asset.php` will be generated. The plugin will automatically use its dependencies and version:
+```php
+// dist/block-editor/blocks/my-block/index.asset.php returns:
+// [ 'dependencies' => [ 'wp-blocks', 'wp-element' ], 'version' => '456def' ]
+// These will be used for the block unless overridden by the filter below.
+add_filter( 'enqueues_block_editor_js_dependencies_blocks_my-block', function( $deps ) {
+    // Optionally add or remove dependencies.
+    $deps[] = 'wp-data';
+    return $deps;
+});
+```
+
 ### Theme Asset Filters
 The plugin provides hooks and filters to customize the enqueuing of theme CSS and JS assets. These allow you to alter handles, dependencies, versions, args, and more for each asset file:
+
+**JS dependencies and version:**
+If a `.asset.php` file exists for your theme JS asset (e.g., `dist/js/main.asset.php`), its `dependencies` and `version` will be used as defaults for script registration. If not present, defaults are used. You can always override via the filters below.
 
 #### Theme CSS Filters
 * `enqueues_theme_css_handle_{$filename}`: Customize the handle used for registering the style.
@@ -574,12 +590,25 @@ The plugin provides hooks and filters to customize the enqueuing of theme CSS an
 #### Theme JS Filters
 * `enqueues_theme_js_handle_{$filename}`: Customize the handle used for registering the script.
 * `enqueues_theme_js_register_script_{$filename}`: Should the script be registered. Default: true.
-* `enqueues_theme_js_dependencies_{$filename}`: Alter the script dependencies.
-* `enqueues_theme_js_version_{$filename}`: Alter the script version.
+* `enqueues_theme_js_dependencies_{$filename}`: Alter the script dependencies. Default is from `.asset.php` if present, otherwise `[ 'jquery', 'wp-i18n', 'wp-api', 'underscore' ]`.
+* `enqueues_theme_js_version_{$filename}`: Alter the script version. Default is from `.asset.php` if present, otherwise file modification time.
 * `enqueues_theme_js_args_{$filename}`: Alter the script arguments (e.g., 'strategy', 'in_footer').
 * `enqueues_theme_js_enqueue_script_{$filename}`: Should the script be enqueued. Default: true.
 * `enqueues_theme_js_localized_data_var_name_{$filename}`: Customize the variable name for localized JS data.
 * `enqueues_theme_js_localized_data_{$filename}`: Customize the data array for localized JS variables.
+
+**Example: Using .asset.php for theme JS dependencies/version**
+If you build your theme JS with the WordPress dependency extraction plugin, a file like `dist/js/main.asset.php` will be generated. The plugin will automatically use its dependencies and version:
+```php
+// dist/js/main.asset.php returns:
+// [ 'dependencies' => [ 'wp-element' ], 'version' => '123abc' ]
+// These will be used for main.js unless overridden by the filter below.
+add_filter( 'enqueues_theme_js_dependencies_main', function( $deps ) {
+    // Optionally add or remove dependencies.
+    $deps[] = 'wp-data';
+    return $deps;
+});
+```
 
 #### Example Usage: Customizing Main JS Args
 ```php

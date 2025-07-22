@@ -113,9 +113,16 @@ class ThemeEnqueueMainController extends Controller {
 			$js_handle = apply_filters( "enqueues_theme_js_handle_{$file_name}", $js_data['handle'] );
 			$js_src    = $js_data['url'];
 			$js_file   = $js_data['file'];
-			$js_deps   = apply_filters( "enqueues_theme_js_dependencies_{$file_name}", [ 'jquery', 'wp-i18n', 'wp-api', 'underscore' ] );
-			$js_ver    = apply_filters( "enqueues_theme_js_version_{$file_name}", $js_data['ver'] );
-			$js_args   = apply_filters(
+
+			// Attempt to load .asset.php file for dependencies and version.
+			$asset_php_path = $directory . '/dist/js/' . $file_name . '.asset.php';
+			$asset_php      = file_exists( $asset_php_path ) ? include $asset_php_path : [];
+			$default_deps   = $asset_php['dependencies'] ?? [ 'jquery', 'wp-i18n', 'wp-api', 'underscore' ];
+			$default_ver    = $asset_php['version'] ?? $js_data['ver'];
+
+			$js_deps = apply_filters( "enqueues_theme_js_dependencies_{$file_name}", $default_deps );
+			$js_ver  = apply_filters( "enqueues_theme_js_version_{$file_name}", $default_ver );
+			$js_args = apply_filters(
 				"enqueues_theme_js_args_{$file_name}",
 				[
 					'in_footer' => true,
