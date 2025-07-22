@@ -110,7 +110,7 @@ class BlockEditorRegistrationController extends Controller {
 				$category['icon'] = get_encoded_svg_icon( $icon_path );
 			}
 
-			$category['title'] = __( $category['title'], get_translation_domain() );
+			$category['title'] = __( $category['title'], get_translation_domain() ); // phpcs:ignore
 			$categories[]      = $category;
 		}
 
