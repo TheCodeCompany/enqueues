@@ -81,18 +81,25 @@ class ThemeEnqueueMainController extends Controller {
 
 		if ( $css_data ) {
 
-			$css_handle = $css_data['handle'];
+			$css_handle = apply_filters( "enqueues_theme_css_handle_{$file_name}", $css_data['handle'] );
 			$css_src    = $css_data['url'];
 			$css_file   = $css_data['file'];
-			$css_deps   = [];
-			$css_ver    = $css_data['ver'];
-			$css_media  = 'all';
+			$css_deps   = apply_filters( "enqueues_theme_css_dependencies_{$file_name}", [] );
+			$css_ver    = apply_filters( "enqueues_theme_css_version_{$file_name}", $css_data['ver'] );
+			$css_media  = apply_filters( "enqueues_theme_css_media_{$file_name}", 'all' );
 
-			if ( $enqueue_assets->render_css_inline( $css_handle ) ) {
-				add_inline_asset_to_wp_head( 'style', $css_handle, $css_src, $css_file, $css_ver, $css_deps );
-			} else {
-				wp_register_style( $css_handle, $css_src, $css_deps, $css_ver, $css_media );
-				wp_enqueue_style( $css_handle );
+			$register_style = apply_filters( "enqueues_theme_css_register_style_{$file_name}", true );
+			$enqueue_style  = apply_filters( "enqueues_theme_css_enqueue_style_{$file_name}", true );
+
+			if ( $register_style ) {
+				if ( $enqueue_assets->render_css_inline( $css_handle ) ) {
+					add_inline_asset_to_wp_head( 'style', $css_handle, $css_src, $css_file, $css_ver, $css_deps );
+				} else {
+					wp_register_style( $css_handle, $css_src, $css_deps, $css_ver, $css_media );
+					if ( $enqueue_style ) {
+						wp_enqueue_style( $css_handle );
+					}
+				}
 			}
 		}
 
@@ -103,27 +110,41 @@ class ThemeEnqueueMainController extends Controller {
 
 		if ( $js_data ) {
 
-			$js_handle = $js_data['handle'];
+			$js_handle = apply_filters( "enqueues_theme_js_handle_{$file_name}", $js_data['handle'] );
 			$js_src    = $js_data['url'];
 			$js_file   = $js_data['file'];
-			$js_deps   = [ 'jquery', 'wp-i18n', 'wp-api', 'underscore' ];
-			$js_ver    = $js_data['ver'];
-			$js_args   = [ 
-				'in_footer' => true,
-				'strategy'  => 'async',
-			];
+			$js_deps   = apply_filters( "enqueues_theme_js_dependencies_{$file_name}", [ 'jquery', 'wp-i18n', 'wp-api', 'underscore' ] );
+			$js_ver    = apply_filters( "enqueues_theme_js_version_{$file_name}", $js_data['ver'] );
+			$js_args   = apply_filters(
+				"enqueues_theme_js_args_{$file_name}",
+				[
+					'in_footer' => true,
+					'strategy'  => 'async',
+				]
+			);
 
-			if ( $enqueue_assets->render_js_inline( $js_handle ) ) {
-				add_inline_asset_to_wp_footer( 'script', $js_handle, $js_src, $js_file, $js_ver, $js_deps );
-			} else {
-				wp_register_script( $js_handle, $js_src, $js_deps, $js_ver, $js_args );
-				wp_enqueue_script( $js_handle );
+			$register_script = apply_filters( "enqueues_theme_js_register_script_{$file_name}", true );
+			$enqueue_script  = apply_filters( "enqueues_theme_js_enqueue_script_{$file_name}", true );
 
-				[ $name, $data ] = $enqueue_assets->get_js_config( $js_handle );
+			if ( $register_script ) {
+				if ( $enqueue_assets->render_js_inline( $js_handle ) ) {
+					add_inline_asset_to_wp_footer( 'script', $js_handle, $js_src, $js_file, $js_ver, $js_deps );
+				} else {
+					wp_register_script( $js_handle, $js_src, $js_deps, $js_ver, $js_args );
+					if ( $enqueue_script ) {
+						wp_enqueue_script( $js_handle );
+					}
 
-				// Localize the script with the data.
-				if ( $name && $data ) {
-					wp_localize_script( $js_handle, $name, $data );
+					[ $name, $data ] = $enqueue_assets->get_js_config( $js_handle );
+
+					// Allow filtering of localized data and var name.
+					$localized_data     = apply_filters( "enqueues_theme_js_localized_data_{$file_name}", $data );
+					$localized_var_name = apply_filters( "enqueues_theme_js_localized_data_var_name_{$file_name}", $name );
+
+					// Localize the script with the data.
+					if ( $localized_var_name && $localized_data ) {
+						wp_localize_script( $js_handle, $localized_var_name, $localized_data );
+					}
 				}
 			}
 		}
