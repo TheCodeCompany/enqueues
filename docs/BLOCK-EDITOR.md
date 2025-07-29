@@ -43,7 +43,7 @@ Below are the most important filters for customizing block editor asset loading 
 - `enqueues_block_editor_css_register_style_{type}_{handle}`: Should the style be registered? Default: true.
 - `enqueues_block_editor_css_dependencies_{type}_{handle}`: Alter the style dependencies.
 - `enqueues_block_editor_css_version_{type}_{handle}`: Alter the style version.
-- `enqueues_block_editor_css_enqueue_style_{type}_{handle}`: Should the style be enqueued? Default: true for plugins, false for blocks.
+- `enqueues_block_editor_css_enqueue_style_{type}_{handle}`: Should the style be enqueued? Default: true for editor context, false for frontend context.
 
 ### Example: Add a Dependency to a Block Style
 ```php
@@ -59,7 +59,7 @@ add_filter( 'enqueues_block_editor_css_dependencies_blocks_myblock', function( $
 - `enqueues_block_editor_js_dependencies_{type}_{handle}`: Alter the script dependencies. Default is from `.asset.php` if present.
 - `enqueues_block_editor_js_version_{type}_{handle}`: Alter the script version. Default is from `.asset.php` if present.
 - `enqueues_block_editor_js_args_{type}_{handle}`: Alter the script arguments (e.g., 'strategy', 'in_footer').
-- `enqueues_block_editor_js_enqueue_script_{type}_{handle}`: Should the script be enqueued? Default: true for plugins, false for blocks.
+- `enqueues_block_editor_js_enqueue_script_{type}_{handle}`: Should the script be enqueued? Default: true for editor context, false for frontend context.
 - `enqueues_block_editor_js_localized_data_var_name_{type}_{handle}`: Customize the variable name for localized JS data.
 - `enqueues_block_editor_js_localized_data_{type}_{handle}`: Customize the data array for localized JS variables.
 

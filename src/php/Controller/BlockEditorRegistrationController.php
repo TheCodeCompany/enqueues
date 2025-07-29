@@ -122,18 +122,18 @@ class BlockEditorRegistrationController extends Controller {
 	 *
 	 * @param string $type The asset type (blocks, plugins, or extensions).
 	 * @param string $context The context (frontend, editor, view).
-	 * @param bool   $register_only Whether to only register assets or enqueue them.
+	 * @param bool   $enqueue_style Whether to enqueue styles after registration.
+	 * @param bool   $enqueue_script Whether to enqueue scripts after registration.
 	 *
 	 * @return void
 	 */
-	private function enqueue_assets( $type, $context, $register_only = true ): void {
+	private function enqueue_assets( $type, $context, $enqueue_style = false, $enqueue_script = false ): void {
 
 		$directory                  = get_template_directory();
 		$directory_uri              = get_template_directory_uri();
 		$block_editor_dist_dir_path = get_block_editor_dist_dir();
 		$block_editor_dist_dir      = "{$directory}{$block_editor_dist_dir_path}/{$type}";
 		$enqueue_asset_dirs         = array_filter( glob( "{$block_editor_dist_dir}/*" ), 'is_dir' );
-		$block_editor_namespace     = get_block_editor_namespace();
 
 		foreach ( $enqueue_asset_dirs as $enqueue_asset_dir ) {
 			$filename = basename( $enqueue_asset_dir );
@@ -154,9 +154,9 @@ class BlockEditorRegistrationController extends Controller {
 
 					wp_register_style( $handle, "{$directory_uri}{$css_path}", $css_deps, $css_ver );
 
-					$register_only = apply_filters( "enqueues_block_editor_enqueue_style_{$type}_{$filename}", $register_only );
+					$should_enqueue_style = apply_filters( "enqueues_block_editor_enqueue_style_{$type}_{$filename}", $enqueue_style );
 					
-					if ( ! $register_only ) {
+					if ( $should_enqueue_style ) {
 						wp_enqueue_style( $handle );
 					}
 				}
@@ -188,9 +188,9 @@ class BlockEditorRegistrationController extends Controller {
 
 					wp_register_script( $handle, "{$directory_uri}{$js_path}", $js_deps, $js_ver, $args );
 
-					$register_only = apply_filters( "enqueues_block_editor_js_enqueue_script_{$type}_{$filename}", $register_only );
+					$should_enqueue_script = apply_filters( "enqueues_block_editor_js_enqueue_script_{$type}_{$filename}", $enqueue_script );
 					
-					if ( ! $register_only ) {
+					if ( $should_enqueue_script ) {
 						wp_enqueue_script( $handle );
 					}
 
@@ -212,12 +212,12 @@ class BlockEditorRegistrationController extends Controller {
 	 */
 	public function enqueue_frontend_assets(): void {
 
-		$this->enqueue_assets( 'blocks', 'frontend' );
-		$this->enqueue_assets( 'blocks', 'view' );
-		$this->enqueue_assets( 'plugins', 'frontend' );
-		$this->enqueue_assets( 'plugins', 'view' );
-		$this->enqueue_assets( 'extensions', 'frontend' );
-		$this->enqueue_assets( 'extensions', 'view' );
+		$this->enqueue_assets( 'blocks', 'frontend', false, false );
+		$this->enqueue_assets( 'blocks', 'view', false, false );
+		$this->enqueue_assets( 'plugins', 'frontend', false, false );
+		$this->enqueue_assets( 'plugins', 'view', false, false );
+		$this->enqueue_assets( 'extensions', 'frontend', false, false );
+		$this->enqueue_assets( 'extensions', 'view', false, false );
 	}
 
 	/**
@@ -227,9 +227,9 @@ class BlockEditorRegistrationController extends Controller {
 	 */
 	public function enqueue_editor_assets(): void {
 
-		$this->enqueue_assets( 'blocks', 'editor', false );
-		$this->enqueue_assets( 'plugins', 'editor', false );
-		$this->enqueue_assets( 'extensions', 'editor', false );
+		$this->enqueue_assets( 'blocks', 'editor', true, true );
+		$this->enqueue_assets( 'plugins', 'editor', true, true );
+		$this->enqueue_assets( 'extensions', 'editor', true, true );
 	}
 
 	/**
