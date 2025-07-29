@@ -144,17 +144,17 @@ class BlockEditorRegistrationController extends Controller {
 
 			if ( $css_path ) {
 
-				$handle = apply_filters( "enqueues_block_editor_handle_css_{$type}_{$filename}", "{$filename}-{$css_filetype}" );
+				$handle = apply_filters( "enqueues_block_editor_handle_css_{$type}_{$filename}", "{$filename}-{$css_filetype}", $context );
 
-				$register_style = apply_filters( "enqueues_block_editor_register_style_{$type}_{$filename}", true );
+				$register_style = apply_filters( "enqueues_block_editor_register_style_{$type}_{$filename}", true, $context );
 
 				if ( $register_style ) {
-					$css_deps = apply_filters( "enqueues_block_editor_css_dependencies_{$type}_{$filename}", [] );
-					$css_ver  = apply_filters( "enqueues_block_editor_css_version_{$type}_{$filename}", filemtime( "{$directory}{$css_path}" ) );
+					$css_deps = apply_filters( "enqueues_block_editor_css_dependencies_{$type}_{$filename}", [], $context );
+					$css_ver  = apply_filters( "enqueues_block_editor_css_version_{$type}_{$filename}", filemtime( "{$directory}{$css_path}" ), $context );
 
 					wp_register_style( $handle, "{$directory_uri}{$css_path}", $css_deps, $css_ver );
 
-					$should_enqueue_style = apply_filters( "enqueues_block_editor_enqueue_style_{$type}_{$filename}", $enqueue_style );
+					$should_enqueue_style = apply_filters( "enqueues_block_editor_enqueue_style_{$type}_{$filename}", $enqueue_style, $context );
 					
 					if ( $should_enqueue_style ) {
 						wp_enqueue_style( $handle );
@@ -168,34 +168,34 @@ class BlockEditorRegistrationController extends Controller {
 
 			if ( $js_path ) {
 				
-				$handle = apply_filters( "enqueues_block_editor_js_handle_{$type}_{$filename}", "{$filename}-{$js_filetype}" );
+				$handle = apply_filters( "enqueues_block_editor_js_handle_{$type}_{$filename}", "{$filename}-{$js_filetype}", $context );
 
 				$args = [
 					'strategy'  => 'async',
 					'in_footer' => true,
 				];
 
-				$args = apply_filters( "enqueues_block_editor_js_args_{$type}_{$filename}", $args );
+				$args = apply_filters( "enqueues_block_editor_js_args_{$type}_{$filename}", $args, $context );
 
 				$enqueue_asset_path = "{$directory}/" . ltrim( str_replace( '.js', '.asset.php', $js_path ), '/' );
 				$assets             = file_exists( $enqueue_asset_path ) ? include $enqueue_asset_path : [];
 
-				$register_script = apply_filters( "enqueues_block_editor_js_register_script_{$type}_{$filename}", true );
+				$register_script = apply_filters( "enqueues_block_editor_js_register_script_{$type}_{$filename}", true, $context );
 
 				if ( $register_script ) {
-					$js_deps = apply_filters( "enqueues_block_editor_js_dependencies_{$type}_{$filename}", $assets['dependencies'] ?? [] );
-					$js_ver  = apply_filters( "enqueues_block_editor_js_version_{$type}_{$filename}", $assets['version'] ?? filemtime( "{$directory}{$js_path}" ) );
+					$js_deps = apply_filters( "enqueues_block_editor_js_dependencies_{$type}_{$filename}", $assets['dependencies'] ?? [], $context );
+					$js_ver  = apply_filters( "enqueues_block_editor_js_version_{$type}_{$filename}", $assets['version'] ?? filemtime( "{$directory}{$js_path}" ), $context );
 
 					wp_register_script( $handle, "{$directory_uri}{$js_path}", $js_deps, $js_ver, $args );
 
-					$should_enqueue_script = apply_filters( "enqueues_block_editor_js_enqueue_script_{$type}_{$filename}", $enqueue_script );
+					$should_enqueue_script = apply_filters( "enqueues_block_editor_js_enqueue_script_{$type}_{$filename}", $enqueue_script, $context );
 					
 					if ( $should_enqueue_script ) {
 						wp_enqueue_script( $handle );
 					}
 
-					$localized_data     = apply_filters( "enqueues_block_editor_js_localized_data_{$type}_{$filename}", [] );
-					$localized_var_name = apply_filters( "enqueues_block_editor_js_localized_data_var_name_{$type}_{$filename}", string_camelcaseify( "blockEditor {$type} {$filename} Config" ) );
+					$localized_data     = apply_filters( "enqueues_block_editor_js_localized_data_{$type}_{$filename}", [], $context );
+					$localized_var_name = apply_filters( "enqueues_block_editor_js_localized_data_var_name_{$type}_{$filename}", string_camelcaseify( "blockEditor {$type} {$filename} Config" ), $context );
 
 					if ( $localized_data ) {
 						wp_localize_script( $handle, $localized_var_name, $localized_data );

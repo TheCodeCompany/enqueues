@@ -14,6 +14,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Updated all method calls to use new parameter structure
   - Frontend assets now use `(false, false)` - register only, don't enqueue
   - Editor assets now use `(true, true)` - register and enqueue both styles and scripts
+- **BREAKING CHANGE**: Added `$context` parameter to all block editor filters
+  - All filters now receive `$context` as the second parameter for context-aware customization
+  - Updated all filter examples in documentation to include the new parameter
 
 ### Removed
 - Removed unused `$block_editor_namespace` variable from `enqueue_assets()` method
@@ -29,6 +32,22 @@ $this->enqueue_assets('blocks', 'editor', false);
 **After:**
 ```php
 $this->enqueue_assets('blocks', 'editor', true, true);
+```
+
+If you're using block editor filters, update your filter callbacks to include the `$context` parameter:
+
+**Before:**
+```php
+add_filter( 'enqueues_block_editor_js_register_script_plugins_myplugin', function( $register ) {
+    return is_user_logged_in();
+});
+```
+
+**After:**
+```php
+add_filter( 'enqueues_block_editor_js_register_script_plugins_myplugin', function( $register, $context ) {
+    return is_user_logged_in();
+}, 10, 2 );
 ```
 
 ## [1.0.0] - Initial Release

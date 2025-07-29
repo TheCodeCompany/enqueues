@@ -16,17 +16,17 @@ You can use filters to:
 
 ### Example: Conditionally Register a Block Plugin
 ```php
-add_filter( 'enqueues_block_editor_js_register_script_plugins_myplugin', function( $register ) {
+add_filter( 'enqueues_block_editor_js_register_script_plugins_myplugin', function( $register, $context ) {
     return is_user_logged_in();
-});
+}, 10, 2 );
 ```
 
 ### Example: Localize Data for a Block Plugin
 ```php
-add_filter( 'enqueues_block_editor_js_localized_data_plugins_myplugin', function( $data ) {
+add_filter( 'enqueues_block_editor_js_localized_data_plugins_myplugin', function( $data, $context ) {
     $data['foo'] = 'bar';
     return $data;
-});
+}, 10, 2 );
 ```
 
 ## Why Use This?
@@ -38,6 +38,8 @@ add_filter( 'enqueues_block_editor_js_localized_data_plugins_myplugin', function
 
 Below are the most important filters for customizing block editor asset loading and registration. Each filter is named according to the asset type and handle (e.g., 'blocks_myblock', 'plugins_myplugin').
 
+**Note**: All filters now include a `$context` parameter as the second parameter, allowing you to make context-aware decisions (e.g., 'editor', 'frontend', 'view').
+
 ## CSS Filters
 - `enqueues_block_editor_css_handle_{type}_{handle}`: Customize the handle for the style.
 - `enqueues_block_editor_css_register_style_{type}_{handle}`: Should the style be registered? Default: true.
@@ -47,10 +49,10 @@ Below are the most important filters for customizing block editor asset loading 
 
 ### Example: Add a Dependency to a Block Style
 ```php
-add_filter( 'enqueues_block_editor_css_dependencies_blocks_myblock', function( $deps ) {
+add_filter( 'enqueues_block_editor_css_dependencies_blocks_myblock', function( $deps, $context ) {
     $deps[] = 'wp-edit-blocks';
     return $deps;
-});
+}, 10, 2 );
 ```
 
 ## JS Filters
@@ -65,17 +67,17 @@ add_filter( 'enqueues_block_editor_css_dependencies_blocks_myblock', function( $
 
 ### Example: Conditionally Register a Plugin Script
 ```php
-add_filter( 'enqueues_block_editor_js_register_script_plugins_myplugin', function( $register ) {
+add_filter( 'enqueues_block_editor_js_register_script_plugins_myplugin', function( $register, $context ) {
     return is_user_logged_in();
-});
+}, 10, 2 );
 ```
 
 ### Example: Localize Data for a Block Plugin
 ```php
-add_filter( 'enqueues_block_editor_js_localized_data_plugins_myplugin', function( $data ) {
+add_filter( 'enqueues_block_editor_js_localized_data_plugins_myplugin', function( $data, $context ) {
     $data['foo'] = 'bar';
     return $data;
-});
+}, 10, 2 );
 ``` 
 
 # MORE FILTERS & ADVANCED OPTIONS
