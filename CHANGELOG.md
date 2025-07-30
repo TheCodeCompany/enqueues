@@ -21,6 +21,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Removed
 - Removed unused `$block_editor_namespace` variable from `enqueue_assets()` method
 
+### Added
+- Added 'minified' flag to `get_asset_page_type_file_data` to indicate if the loaded asset is minified.
+- Updated JS dependency loading to prefer minified versions of dependencies when available.
+
 ### Migration Guide
 If you're extending the `enqueue_assets()` method, update your calls:
 

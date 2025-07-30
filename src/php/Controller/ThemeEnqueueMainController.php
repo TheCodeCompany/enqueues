@@ -64,7 +64,7 @@ class ThemeEnqueueMainController extends Controller {
 	 * This allos us to load asset files based on the page type. Where the page doesnt have a match the default assets are loaded.
 	 */
 	public function load_page_or_template_type_assets(): void {
-		
+
 		$enqueue_assets = new EnqueueAssets();
 
 		$file_name          = $enqueue_assets->get_page_or_template_type();
@@ -84,7 +84,7 @@ class ThemeEnqueueMainController extends Controller {
 			$css_handle = apply_filters( "enqueues_theme_css_handle_{$css_data['handle']}", $css_data['handle'] );
 			$css_src    = $css_data['url'];
 			$css_file   = $css_data['file'];
-			$css_deps   = apply_filters( "enqueues_theme_css_dependencies_{$css_data['handle']}", [] );
+			$css_deps   = apply_filters( "enqueues_theme_css_dependencies_{$css_data['handle']}", 'all' );
 			$css_ver    = apply_filters( "enqueues_theme_css_version_{$css_data['handle']}", $css_data['ver'] );
 			$css_media  = apply_filters( "enqueues_theme_css_media_{$css_data['handle']}", 'all' );
 
@@ -110,24 +110,26 @@ class ThemeEnqueueMainController extends Controller {
 
 		if ( $js_data ) {
 
-			$js_handle = apply_filters( "enqueues_theme_js_handle_{$js_data['handle']}", $js_data['handle'] );
-			$js_src    = $js_data['url'];
-			$js_file   = $js_data['file'];
+			$js_handle   = apply_filters( "enqueues_theme_js_handle_{$js_data['handle']}", $js_data['handle'] );
+			$js_src      = $js_data['url'];
+			$js_file     = $js_data['file'];
+			$js_minified = $js_data['minified'] ?? false;
 
 			// Attempt to load .asset.php file for dependencies and version.
-			$asset_php_path = $directory . '/dist/js/' . $js_data['handle'] . '.asset.php';
-			$asset_php      = file_exists( $asset_php_path ) ? include $asset_php_path : [];
-			$default_deps   = $asset_php['dependencies'] ?? [ 'jquery', 'wp-i18n', 'wp-api', 'underscore' ];
-			$default_ver    = $asset_php['version'] ?? $js_data['ver'];
+			$asset_php_filename = $js_minified ? $js_data['handle'] . '.min.asset.php' : $js_data['handle'] . '.asset.php';
+			$asset_php_path     = "{$directory}/dist/js/{$asset_php_filename}";
+			$asset_php          = file_exists( $asset_php_path ) ? include $asset_php_path : [];
+			$default_deps       = $asset_php['dependencies'] ?? [];
+			$default_ver        = $asset_php['version'] ?? $js_data['ver'];
 
 			$js_deps = apply_filters( "enqueues_theme_js_dependencies_{$js_data['handle']}", $default_deps );
 			$js_ver  = apply_filters( "enqueues_theme_js_version_{$js_data['handle']}", $default_ver );
 			$js_args = apply_filters(
 				"enqueues_theme_js_args_{$js_data['handle']}",
-				[
+				[ 
 					'in_footer' => true,
 					'strategy'  => 'async',
-				]
+				],
 			);
 
 			$register_script = apply_filters( "enqueues_theme_js_register_script_{$js_data['handle']}", true );

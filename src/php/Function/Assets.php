@@ -147,11 +147,12 @@ function get_asset_page_type_file_data(
 	}
 
 	if ( ! empty( $compiled_file_path ) ) {
-		$data = [
-			'handle' => sanitize_key( $file_name ),
-			'url'    => esc_url( "{$directory_uri}{$compiled_file_path}" ),
-			'file'   => esc_url( "{$directory}{$compiled_file_path}" ),
-			'ver'    => filemtime( "{$directory}{$compiled_file_path}" ),
+		$data = [ 
+			'handle'   => sanitize_key( $file_name ),
+			'url'      => esc_url( "{$directory_uri}{$compiled_file_path}" ),
+			'file'     => esc_url( "{$directory}{$compiled_file_path}" ),
+			'ver'      => filemtime( "{$directory}{$compiled_file_path}" ),
+			'minified' => false !== strpos( $compiled_file_path, '.min.' ),
 		];
 
 		return $data;
@@ -163,11 +164,12 @@ function get_asset_page_type_file_data(
 	}
 
 	if ( ! empty( $compiled_file_path ) ) {
-		$data = [
-			'handle' => sanitize_key( $fallback_file_name ),
-			'url'    => esc_url( "{$directory_uri}{$compiled_file_path}" ),
-			'file'   => esc_url( "{$directory}{$compiled_file_path}" ),
-			'ver'    => filemtime( "{$directory}{$compiled_file_path}" ),
+		$data = [ 
+			'handle'   => sanitize_key( $fallback_file_name ),
+			'url'      => esc_url( "{$directory_uri}{$compiled_file_path}" ),
+			'file'     => esc_url( "{$directory}{$compiled_file_path}" ),
+			'ver'      => filemtime( "{$directory}{$compiled_file_path}" ),
+			'minified' => false !== strpos( $compiled_file_path, '.min.' ),
 		];
 
 		return $data;
