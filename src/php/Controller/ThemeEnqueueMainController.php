@@ -113,14 +113,11 @@ class ThemeEnqueueMainController extends Controller {
 			$js_handle   = apply_filters( "enqueues_theme_js_handle_{$js_data['handle']}", $js_data['handle'] );
 			$js_src      = $js_data['url'];
 			$js_file     = $js_data['file'];
-			$js_minified = $js_data['minified'] ?? false;
 
-			// Attempt to load .asset.php file for dependencies and version.
-			$asset_php_filename = $js_minified ? $js_data['handle'] . '.min.asset.php' : $js_data['handle'] . '.asset.php';
-			$asset_php_path     = "{$directory}/dist/js/{$asset_php_filename}";
-			$asset_php          = file_exists( $asset_php_path ) ? include $asset_php_path : [];
-			$default_deps       = $asset_php['dependencies'] ?? [];
-			$default_ver        = $asset_php['version'] ?? $js_data['ver'];
+			// Use asset_php data from get_asset_page_type_file_data for dependencies and version.
+			$asset_php    = $js_data['asset_php'] ?? [];
+			$default_deps = $asset_php['dependencies'] ?? [];
+			$default_ver  = $asset_php['version'] ?? $js_data['ver'];
 
 			$js_deps = apply_filters( "enqueues_theme_js_dependencies_{$js_data['handle']}", $default_deps );
 			$js_ver  = apply_filters( "enqueues_theme_js_version_{$js_data['handle']}", $default_ver );
