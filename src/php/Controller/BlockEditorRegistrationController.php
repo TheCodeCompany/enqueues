@@ -132,6 +132,7 @@ class BlockEditorRegistrationController extends Controller {
 		$directory                  = get_template_directory();
 		$directory_uri              = get_template_directory_uri();
 		$block_editor_dist_dir_path = get_block_editor_dist_dir();
+		$block_editor_namespace     = get_block_editor_namespace();
 		$block_editor_dist_dir      = "{$directory}{$block_editor_dist_dir_path}/{$type}";
 		$enqueue_asset_dirs         = array_filter( glob( "{$block_editor_dist_dir}/*" ), 'is_dir' );
 
@@ -144,7 +145,7 @@ class BlockEditorRegistrationController extends Controller {
 
 			if ( $css_path ) {
 
-				$handle = apply_filters( "enqueues_block_editor_handle_css_{$type}_{$filename}", "{$filename}-{$css_filetype}", $context );
+				$handle = apply_filters( "enqueues_block_editor_handle_css_{$type}_{$filename}", "{$block_editor_namespace}-{$filename}-{$css_filetype}", $context );
 
 				$register_style = apply_filters( "enqueues_block_editor_register_style_{$type}_{$filename}", true, $context );
 
@@ -155,7 +156,7 @@ class BlockEditorRegistrationController extends Controller {
 					wp_register_style( $handle, "{$directory_uri}{$css_path}", $css_deps, $css_ver );
 
 					$should_enqueue_style = apply_filters( "enqueues_block_editor_enqueue_style_{$type}_{$filename}", $enqueue_style, $context );
-					
+
 					if ( $should_enqueue_style ) {
 						wp_enqueue_style( $handle );
 					}
@@ -167,8 +168,9 @@ class BlockEditorRegistrationController extends Controller {
 			$js_path     = asset_find_file_path( "{$block_editor_dist_dir_path}/{$type}/{$filename}", $js_filetype, 'js', $directory );
 
 			if ( $js_path ) {
-				
-				$handle = apply_filters( "enqueues_block_editor_js_handle_{$type}_{$filename}", "{$filename}-{$js_filetype}", $context );
+
+				$handle = 'blocks' === $type && 'view' === $context ? "{$block_editor_namespace}-{$filename}-{$js_filetype}-script" : "{$filename}-{$js_filetype}";
+				$handle = apply_filters( "enqueues_block_editor_js_handle_{$type}_{$filename}", $handle, $context );
 
 				$args = [
 					'strategy'  => 'async',
@@ -189,7 +191,7 @@ class BlockEditorRegistrationController extends Controller {
 					wp_register_script( $handle, "{$directory_uri}{$js_path}", $js_deps, $js_ver, $args );
 
 					$should_enqueue_script = apply_filters( "enqueues_block_editor_js_enqueue_script_{$type}_{$filename}", $enqueue_script, $context );
-					
+
 					if ( $should_enqueue_script ) {
 						wp_enqueue_script( $handle );
 					}
