@@ -3,6 +3,52 @@
 ## What Is Block Editor Integration?
 The Enqueues MU Plugin makes it easy to register custom blocks, block categories, and block editor plugins for the WordPress block editor (Gutenberg). You can control which scripts and styles are loaded in the editor, localize data, and more.
 
+## CLS (Cumulative Layout Shift) Fix for Dynamic Blocks
+
+### The Problem
+Dynamic blocks (those with `render.php` or `"render"` in `block.json`) have a critical issue: WordPress Core discovers their CSS during content rendering, which happens after `wp_head`. This causes the styles to be output via `print_late_styles()` near the footer, resulting in:
+
+- **Cumulative Layout Shift (CLS)**: Content reflows as styles load late
+- **Poor Core Web Vitals scores**: CLS negatively impacts performance metrics
+- **Poor user experience**: Visible content jumps and layout shifts
+- **Late paint of block styles**: Styles appear after initial page render
+
+Static blocks don't have this issue because Core discovers their assets early and prints them in `<head>`.
+
+### The Solution
+The Enqueues system implements a comprehensive fix:
+
+1. **Let Core own block registration**: Use `register_block_type_from_metadata()` so Core registers the correct handles from `block.json`
+2. **Detect dynamic blocks**: Identify blocks with `render.php` or `"render"` in `block.json` during registration
+3. **Pre-enqueue styles early**: On `wp_enqueue_scripts` (priority 1), check if dynamic blocks are present on the page and enqueue their styles
+4. **Core Web Vitals optimization**: Use filters to ensure styles load as `<link>` tags in `<head>`
+
+### Benefits
+- ✅ **Eliminates CLS** from dynamic block styles
+- ✅ **No duplication**: Single source of truth (Core's registration from `block.json`)
+- ✅ **Works with custom handles**: Respects custom style handles defined in `block.json`
+- ✅ **Performance-friendly**: Only loads CSS for blocks present on the page
+- ✅ **Maintains existing functionality**: Plugin/extension asset handling unchanged
+
+### Implementation Details
+The fix is implemented in `BlockEditorRegistrationController`:
+
+- **Dynamic block detection**: Scans for `render.php` or `"render"` in `block.json`
+- **Style handle extraction**: Determines exact handles Core will use (supports custom handles)
+- **Early pre-enqueue**: Uses `wp_enqueue_scripts` priority 1 to enqueue styles in `<head>`
+- **Core Web Vitals filters**: 
+  - `should_load_separate_core_block_assets = true`: Only load CSS for blocks on page
+  - `wp_should_inline_block_styles = false`: Use `<link>` tags instead of inline `<style>`
+
+### Rollout Checklist
+When implementing this fix:
+
+1. ✅ Remove/skip frontend registration of `blocks/*/(style|view).css`
+2. ✅ Ensure blocks are registered via `register_block_type_from_metadata()`
+3. ✅ Keep the Core Web Vitals optimization filters
+4. ✅ Purge page cache and CDN
+5. ✅ Test with DevTools "Disable cache" to verify block CSS loads in `<head>`
+
 ## Registering Blocks, Categories, and Plugins
 - Blocks are registered by scanning your block directory for `block.json` files.
 - You can add custom block categories or plugins using filters.
