@@ -151,7 +151,7 @@ class BlockEditorRegistrationController extends Controller {
 			}
 
 			// Detect dynamic blocks: "render" in block.json or presence of render.php.
-			$meta       = wp_json_decode( file_get_contents( $metadata_file ) ?: '[]', true ) ?: []; // phpcs:ignore
+			$meta       = json_decode( file_get_contents( $metadata_file ) ?: '[]', true ) ?: []; // phpcs:ignore
 			$is_dynamic = ! empty( $meta['render'] ) || file_exists( "{$block_dir}/render.php" );
 
 			if ( $is_dynamic ) {
