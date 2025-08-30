@@ -56,19 +56,17 @@ This page lists **all** filters and actions available in the Enqueues MU Plugin,
 
 | Filter/Action                                         | Summary                                                        | Docs                                                        |
 |:------------------------------------------------------|:---------------------------------------------------------------|:------------------------------------------------------------|
-| `enqueues_block_editor_handle_css_{type}_{filename}`   | Filter the handle for block editor CSS.                        | [Block Editor Filters](BLOCK-EDITOR.md#filters-for-block-assets) |
-| `enqueues_block_editor_register_style_{type}_{filename}` | Enable/disable registration of block editor CSS.             | [Block Editor Filters](BLOCK-EDITOR.md#filters-for-block-assets) |
-| `enqueues_block_editor_css_dependencies_{type}_{filename}` | Filter dependencies for block editor CSS.                   | [Block Editor Filters](BLOCK-EDITOR.md#filters-for-block-assets) |
-| `enqueues_block_editor_css_version_{type}_{filename}`  | Filter version for block editor CSS.                           | [Block Editor Filters](BLOCK-EDITOR.md#filters-for-block-assets) |
-| `enqueues_block_editor_enqueue_style_{type}_{filename}` | Enable/disable enqueue for block editor CSS.                  | [Block Editor Filters](BLOCK-EDITOR.md#filters-for-block-assets) |
-| `enqueues_block_editor_js_handle_{type}_{filename}`    | Filter the handle for block editor JS.                         | [Block Editor Filters](BLOCK-EDITOR.md#filters-for-block-assets) |
-| `enqueues_block_editor_js_args_{type}_{filename}`      | Filter args for block editor JS.                               | [Block Editor Filters](BLOCK-EDITOR.md#filters-for-block-assets) |
-| `enqueues_block_editor_js_register_script_{type}_{filename}` | Enable/disable registration of block editor JS.            | [Block Editor Filters](BLOCK-EDITOR.md#filters-for-block-assets) |
-| `enqueues_block_editor_js_dependencies_{type}_{filename}` | Filter dependencies for block editor JS.                    | [Block Editor Filters](BLOCK-EDITOR.md#filters-for-block-assets) |
-| `enqueues_block_editor_js_version_{type}_{filename}`   | Filter version for block editor JS.                            | [Block Editor Filters](BLOCK-EDITOR.md#filters-for-block-assets) |
-| `enqueues_block_editor_js_enqueue_script_{type}_{filename}` | Enable/disable enqueue for block editor JS.                 | [Block Editor Filters](BLOCK-EDITOR.md#filters-for-block-assets) |
-| `enqueues_block_editor_js_localized_data_{type}_{filename}` | Filter localized data for block editor JS.                  | [Block Editor Filters](BLOCK-EDITOR.md#filters-for-block-assets) |
-| `enqueues_block_editor_js_localized_data_var_name_{type}_{filename}` | Filter the variable name for localized data for block editor JS. | [Block Editor Filters](BLOCK-EDITOR.md#filters-for-block-assets) |
+| `enqueues_block_editor_register_style_{type}_{foldername}` | Enable/disable registration of block editor CSS.             | [Block Editor Filters](BLOCK-EDITOR.md#filters-for-block-assets) |
+| `enqueues_block_editor_css_dependencies_{type}_{foldername}` | Filter dependencies for block editor CSS.                   | [Block Editor Filters](BLOCK-EDITOR.md#filters-for-block-assets) |
+| `enqueues_block_editor_css_version_{type}_{foldername}`  | Filter version for block editor CSS.                           | [Block Editor Filters](BLOCK-EDITOR.md#filters-for-block-assets) |
+| `enqueues_block_editor_enqueue_style_{type}_{foldername}` | Enable/disable enqueue for block editor CSS.                  | [Block Editor Filters](BLOCK-EDITOR.md#filters-for-block-assets) |
+| `enqueues_block_editor_js_args_{type}_{foldername}`      | Filter args for block editor JS.                               | [Block Editor Filters](BLOCK-EDITOR.md#filters-for-block-assets) |
+| `enqueues_block_editor_js_register_script_{type}_{foldername}` | Enable/disable registration of block editor JS.            | [Block Editor Filters](BLOCK-EDITOR.md#filters-for-block-assets) |
+| `enqueues_block_editor_js_dependencies_{type}_{foldername}` | Filter dependencies for block editor JS.                    | [Block Editor Filters](BLOCK-EDITOR.md#filters-for-block-assets) |
+| `enqueues_block_editor_js_version_{type}_{foldername}`   | Filter version for block editor JS.                            | [Block Editor Filters](BLOCK-EDITOR.md#filters-for-block-assets) |
+| `enqueues_block_editor_js_enqueue_script_{type}_{foldername}` | Enable/disable enqueue for block editor JS.                 | [Block Editor Filters](BLOCK-EDITOR.md#filters-for-block-assets) |
+| `enqueues_block_editor_js_localized_data_{type}_{foldername}` | Filter localized data for block editor JS.                  | [Block Editor Filters](BLOCK-EDITOR.md#filters-for-block-assets) |
+| `enqueues_block_editor_js_localized_data_var_name_{type}_{foldername}` | Filter the variable name for localized data for block editor JS. | [Block Editor Filters](BLOCK-EDITOR.md#filters-for-block-assets) |
 | `enqueues_block_editor_namespace`                      | Filter the block editor namespace.                             | [Block Editor Filters](BLOCK-EDITOR.md#more-filters--advanced-options) |
 | `enqueues_block_editor_dist_dir`                       | Filter the block editor dist directory.                        | [Block Editor Filters](BLOCK-EDITOR.md#more-filters--advanced-options) |
 | `enqueues_block_editor_categories`                     | Filter block editor categories.                                | [Block Editor Filters](BLOCK-EDITOR.md#more-filters--advanced-options) |

@@ -39,6 +39,7 @@ The fix is implemented in `BlockEditorRegistrationController`:
 - **Core Web Vitals filters**: 
   - `should_load_separate_core_block_assets = true`: Only load CSS for blocks on page
   - `wp_should_inline_block_styles = false`: Use `<link>` tags instead of inline `<style>`
+  - `styles_inline_size_limit = 0`: Prevent any block styles from being inlined
 
 ### Rollout Checklist
 When implementing this fix:
@@ -82,16 +83,17 @@ add_filter( 'enqueues_block_editor_js_localized_data_plugins_myplugin', function
 
 # FILTERS FOR BLOCK EDITOR INTEGRATION
 
-Below are the most important filters for customizing block editor asset loading and registration. Each filter is named according to the asset type and handle (e.g., 'blocks_myblock', 'plugins_myplugin').
+Below are the most important filters for customizing block editor asset loading and registration. Each filter is named according to the asset type and folder name (e.g., 'blocks_myblock', 'plugins_myplugin').
 
 **Note**: All filters now include a `$context` parameter as the second parameter, allowing you to make context-aware decisions (e.g., 'editor', 'frontend', 'view').
 
 ## CSS Filters
-- `enqueues_block_editor_css_handle_{type}_{handle}`: Customize the handle for the style.
-- `enqueues_block_editor_css_register_style_{type}_{handle}`: Should the style be registered? Default: true.
-- `enqueues_block_editor_css_dependencies_{type}_{handle}`: Alter the style dependencies.
-- `enqueues_block_editor_css_version_{type}_{handle}`: Alter the style version.
-- `enqueues_block_editor_css_enqueue_style_{type}_{handle}`: Should the style be enqueued? Default: true for editor context, false for frontend context.
+- `enqueues_block_editor_css_register_style_{type}_{foldername}`: Should the style be registered? Default: true.
+- `enqueues_block_editor_css_dependencies_{type}_{foldername}`: Alter the style dependencies.
+- `enqueues_block_editor_css_version_{type}_{foldername}`: Alter the style version.
+- `enqueues_block_editor_css_enqueue_style_{type}_{foldername}`: Should the style be enqueued? Default: true for editor context, false for frontend context.
+
+**Note**: Handle customization is not available for blocks since WordPress Core determines handles from `block.json`. Handle filters are only available for plugins and extensions.
 
 ### Example: Add a Dependency to a Block Style
 ```php
@@ -101,15 +103,18 @@ add_filter( 'enqueues_block_editor_css_dependencies_blocks_myblock', function( $
 }, 10, 2 );
 ```
 
+**Note**: The filter name uses the folder name of the block/plugin/extension (e.g., `myblock` for a folder named `myblock`).
+
 ## JS Filters
-- `enqueues_block_editor_js_handle_{type}_{handle}`: Customize the handle for the script.
-- `enqueues_block_editor_js_register_script_{type}_{handle}`: Should the script be registered? Default: true.
-- `enqueues_block_editor_js_dependencies_{type}_{handle}`: Alter the script dependencies. Default is from `.asset.php` if present.
-- `enqueues_block_editor_js_version_{type}_{handle}`: Alter the script version. Default is from `.asset.php` if present.
-- `enqueues_block_editor_js_args_{type}_{handle}`: Alter the script arguments (e.g., 'strategy', 'in_footer').
-- `enqueues_block_editor_js_enqueue_script_{type}_{handle}`: Should the script be enqueued? Default: true for editor context, false for frontend context.
-- `enqueues_block_editor_js_localized_data_var_name_{type}_{handle}`: Customize the variable name for localized JS data.
-- `enqueues_block_editor_js_localized_data_{type}_{handle}`: Customize the data array for localized JS variables.
+- `enqueues_block_editor_js_register_script_{type}_{foldername}`: Should the script be registered? Default: true.
+- `enqueues_block_editor_js_dependencies_{type}_{foldername}`: Alter the script dependencies. Default is from `.asset.php` if present.
+- `enqueues_block_editor_js_version_{type}_{foldername}`: Alter the script version. Default is from `.asset.php` if present.
+- `enqueues_block_editor_js_args_{type}_{foldername}`: Alter the script arguments (e.g., 'strategy', 'in_footer').
+- `enqueues_block_editor_js_enqueue_script_{type}_{foldername}`: Should the script be enqueued? Default: true for editor context, false for frontend context.
+- `enqueues_block_editor_js_localized_data_var_name_{type}_{foldername}`: Customize the variable name for localized JS data.
+- `enqueues_block_editor_js_localized_data_{type}_{foldername}`: Customize the data array for localized JS variables.
+
+**Note**: Handle customization is not available for blocks since WordPress Core determines handles from `block.json`. Handle filters are only available for plugins and extensions.
 
 ### Example: Conditionally Register a Plugin Script
 ```php
@@ -124,7 +129,9 @@ add_filter( 'enqueues_block_editor_js_localized_data_plugins_myplugin', function
     $data['foo'] = 'bar';
     return $data;
 }, 10, 2 );
-``` 
+```
+
+**Note**: The filter name uses the folder name of the block/plugin/extension (e.g., `myplugin` for a folder named `myplugin`). 
 
 # MORE FILTERS & ADVANCED OPTIONS
 
