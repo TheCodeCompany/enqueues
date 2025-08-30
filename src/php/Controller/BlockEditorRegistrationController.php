@@ -102,12 +102,14 @@ class BlockEditorRegistrationController extends Controller {
 		 * 
 		 * - should_load_separate_core_block_assets = true: Only load CSS for blocks present on page
 		 * - wp_should_inline_block_styles = false: Use <link> tags instead of inline <style>
+		 * - styles_inline_size_limit = 0: Prevent any block styles from being inlined
 		 * 
 		 * These filters ensure our pre-enqueued styles appear in <head> as cacheable <link> tags,
 		 * preventing CLS and improving performance.
 		 */
 		add_filter( 'should_load_separate_core_block_assets', '__return_true' );
 		add_filter( 'wp_should_inline_block_styles', '__return_false' );
+		add_filter( 'styles_inline_size_limit', '__return_zero' );
 
 		// Hooks to register blocks, categories, and plugins.
 		add_action( 'init', [ $this, 'register_blocks' ] );
@@ -230,7 +232,7 @@ class BlockEditorRegistrationController extends Controller {
 			return;
 		}
 
-		$maybe_enqueue = function ($content) {
+		$maybe_enqueue = function ( $content ) {
 			if ( ! is_string( $content ) || '' === $content ) {
 				return;
 			}

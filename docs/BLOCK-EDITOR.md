@@ -85,7 +85,33 @@ add_filter( 'enqueues_block_editor_js_localized_data_plugins_myplugin', function
 
 Below are the most important filters for customizing block editor asset loading and registration. Each filter is named according to the asset type and folder name (e.g., 'blocks_myblock', 'plugins_myplugin').
 
-**Note**: All filters now include a `$context` parameter as the second parameter, allowing you to make context-aware decisions (e.g., 'editor', 'frontend', 'view').
+**Note**: All filters now include a `$context` parameter as the second parameter and a `$handle` parameter as the third parameter, allowing you to make context-aware decisions and access the exact handle WordPress Core will use.
+
+## Handle Alignment with WordPress Core
+
+The system ensures perfect alignment with WordPress Core's handle generation from `block.json`. WordPress Core generates handles **without** `-css` or `-js` suffixes, but adds them when printing the HTML:
+
+**CSS Handles:**
+- `style` → `{namespace}-{block-name}-style` (becomes `id="{handle}-css"` in HTML)
+- `viewStyle` → `{namespace}-{block-name}-view-style` (becomes `id="{handle}-css"` in HTML)
+- `editorStyle` → `{namespace}-{block-name}-editor-style` (becomes `id="{handle}-css"` in HTML)
+
+**JS Handles:**
+- `script` → `{namespace}-{block-name}-script` (becomes `id="{handle}-js"` in HTML)
+- `viewScript` → `{namespace}-{block-name}-view-script` (becomes `id="{handle}-js"` in HTML)
+- `editorScript` → `{namespace}-{block-name}-editor-script` (becomes `id="{handle}-js"` in HTML)
+
+**Example:** A block with `style: "file:./style.css"` in `block.json` will:
+1. Generate handle: `example-read-more-content-style`
+2. Print in HTML as: `<link rel="stylesheet" id="example-read-more-content-style-css" href="..." />`
+
+**Custom Handles:** When you provide custom handles in `block.json`, the system uses those exact handles:
+```json
+{
+  "style": ["file:./style.css", "my-custom-style-handle"],
+  "script": ["file:./script.js", "my-custom-script-handle"]
+}
+```
 
 ## CSS Filters
 - `enqueues_block_editor_css_register_style_{type}_{foldername}`: Should the style be registered? Default: true.
@@ -97,10 +123,10 @@ Below are the most important filters for customizing block editor asset loading 
 
 ### Example: Add a Dependency to a Block Style
 ```php
-add_filter( 'enqueues_block_editor_css_dependencies_blocks_myblock', function( $deps, $context ) {
+add_filter( 'enqueues_block_editor_css_dependencies_blocks_myblock', function( $deps, $context, $handle ) {
     $deps[] = 'wp-edit-blocks';
     return $deps;
-}, 10, 2 );
+}, 10, 3 );
 ```
 
 **Note**: The filter name uses the folder name of the block/plugin/extension (e.g., `myblock` for a folder named `myblock`).
@@ -118,17 +144,17 @@ add_filter( 'enqueues_block_editor_css_dependencies_blocks_myblock', function( $
 
 ### Example: Conditionally Register a Plugin Script
 ```php
-add_filter( 'enqueues_block_editor_js_register_script_plugins_myplugin', function( $register, $context ) {
+add_filter( 'enqueues_block_editor_js_register_script_plugins_myplugin', function( $register, $context, $handle ) {
     return is_user_logged_in();
-}, 10, 2 );
+}, 10, 3 );
 ```
 
 ### Example: Localize Data for a Block Plugin
 ```php
-add_filter( 'enqueues_block_editor_js_localized_data_plugins_myplugin', function( $data, $context ) {
+add_filter( 'enqueues_block_editor_js_localized_data_plugins_myplugin', function( $data, $context, $handle ) {
     $data['foo'] = 'bar';
     return $data;
-}, 10, 2 );
+}, 10, 3 );
 ```
 
 **Note**: The filter name uses the folder name of the block/plugin/extension (e.g., `myplugin` for a folder named `myplugin`). 
