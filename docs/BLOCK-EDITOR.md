@@ -22,6 +22,7 @@ The Enqueues system implements a comprehensive fix:
 2. **Detect dynamic blocks**: Identify blocks with `render.php` or `"render"` in `block.json` during registration
 3. **Pre-enqueue styles early**: On `wp_enqueue_scripts` (priority 1), check if dynamic blocks are present on the page and enqueue their styles
 4. **Core Web Vitals optimization**: Use filters to ensure styles load as `<link>` tags in `<head>`
+5. **Add localized parameters**: Use Core's registered handles to localize data for block scripts
 
 ### Benefits
 - ✅ **Eliminates CLS** from dynamic block styles
@@ -29,6 +30,7 @@ The Enqueues system implements a comprehensive fix:
 - ✅ **Works with custom handles**: Respects custom style handles defined in `block.json`
 - ✅ **Performance-friendly**: Only loads CSS for blocks present on the page
 - ✅ **Maintains existing functionality**: Plugin/extension asset handling unchanged
+- ✅ **Supports localized parameters**: Blocks can have localized data even without registering their own scripts
 
 ### Implementation Details
 The fix is implemented in `BlockEditorRegistrationController`:
@@ -40,6 +42,26 @@ The fix is implemented in `BlockEditorRegistrationController`:
   - `should_load_separate_core_block_assets = true`: Only load CSS for blocks on page
   - `wp_should_inline_block_styles = false`: Use `<link>` tags instead of inline `<style>`
   - `styles_inline_size_limit = 0`: Prevent any block styles from being inlined
+- **Localized parameters**: Uses Core's registered handles to add localized data to block scripts
+
+### Order of Operations
+
+#### What WordPress Core Does:
+1. **`init` (priority 10)**: Registers blocks from `block.json` using `register_block_type_from_metadata()`
+2. **Content rendering**: Discovers which blocks are used on the page
+3. **For static blocks**: Enqueues styles/scripts in `<head>` (no CLS issue)
+4. **For dynamic blocks**: Discovers styles during render, outputs via `print_late_styles()` near footer (causes CLS)
+
+#### What We Do:
+1. **`init` (priority 10)**: Let Core register blocks, then extract handles from registry
+2. **`wp_enqueue_scripts` (priority 1)**: Pre-enqueue dynamic block styles for blocks present on page
+3. **`wp_enqueue_scripts` (priority 20)**: Add localized parameters to registered block scripts
+4. **`enqueue_block_editor_assets` (priority 20)**: Add localized parameters to editor scripts
+
+#### Why This Order Matters:
+- **Priority 1**: Ensures dynamic block styles load before any content rendering
+- **Priority 20**: Ensures localization happens after all scripts are registered
+- **Result**: Dynamic block CSS prints in `<head>` as `<link>` tags, preventing CLS
 
 ### Rollout Checklist
 When implementing this fix:
@@ -56,36 +78,79 @@ When implementing this fix:
 - Block editor assets (JS/CSS) are loaded automatically based on naming conventions.
 
 ## Using Filters for Block Assets
-You can use filters to:
-- Add or change dependencies for block scripts/styles
-- Localize data for block scripts
-- Control whether a block plugin is registered or enqueued
 
-### Example: Conditionally Register a Block Plugin
+### Block Localization Filters
+Blocks can have localized data even if they don't register their own scripts, using the handles that WordPress Core registered from `block.json`:
+
+#### `enqueues_block_editor_js_localized_data_blocks_{block_slug}`
+Filter the localized data for a block script.
+
+**Parameters:**
+- `$data` (array): The localized data array
+- `$context` (string): 'frontend' or 'editor'
+- `$script_handle` (string): The exact handle WordPress Core registered
+
+**Example:**
 ```php
-add_filter( 'enqueues_block_editor_js_register_script_plugins_myplugin', function( $register, $context ) {
-    return is_user_logged_in();
-}, 10, 2 );
+add_filter( 'enqueues_block_editor_js_localized_data_blocks_hero-block', function( $data, $context, $script_handle ) {
+    return [
+        'apiUrl' => rest_url( 'wp/v2/' ),
+        'nonce'  => wp_create_nonce( 'wp_rest' ),
+        'config' => [
+            'someSetting' => 'value',
+        ],
+    ];
+}, 10, 3 );
 ```
 
-### Example: Localize Data for a Block Plugin
+#### `enqueues_block_editor_js_localized_data_var_name_blocks_{block_slug}`
+Filter the variable name for localized data.
+
+**Parameters:**
+- `$var_name` (string): The variable name
+- `$context` (string): 'frontend' or 'editor'
+- `$script_handle` (string): The exact handle WordPress Core registered
+
+**Example:**
 ```php
-add_filter( 'enqueues_block_editor_js_localized_data_plugins_myplugin', function( $data, $context ) {
+add_filter( 'enqueues_block_editor_js_localized_data_var_name_blocks_hero-block', function( $var_name, $context, $script_handle ) {
+    return 'heroBlockConfig';
+}, 10, 3 );
+```
+
+### Plugin and Extension Filters
+You can use filters to:
+- Add or change dependencies for plugin/extension scripts/styles
+- Localize data for plugin/extension scripts
+- Control whether a plugin/extension is registered or enqueued
+
+#### Example: Conditionally Register a Plugin Script
+```php
+add_filter( 'enqueues_block_editor_js_register_script_plugins_myplugin', function( $register, $context, $handle ) {
+    return is_user_logged_in();
+}, 10, 3 );
+```
+
+#### Example: Localize Data for a Plugin Script
+```php
+add_filter( 'enqueues_block_editor_js_localized_data_plugins_myplugin', function( $data, $context, $handle ) {
     $data['foo'] = 'bar';
     return $data;
-}, 10, 2 );
+}, 10, 3 );
 ```
 
 ## Why Use This?
 - Streamlines block development and registration
 - Ensures compatibility with the block editor
-- Gives you fine-grained control over the editor experience 
+- Gives you fine-grained control over the editor experience
+- Eliminates CLS issues with dynamic blocks
+- Provides localized data support for all block types
 
 # FILTERS FOR BLOCK EDITOR INTEGRATION
 
 Below are the most important filters for customizing block editor asset loading and registration. Each filter is named according to the asset type and folder name (e.g., 'blocks_myblock', 'plugins_myplugin').
 
-**Note**: All filters now include a `$context` parameter as the second parameter and a `$handle` parameter as the third parameter, allowing you to make context-aware decisions and access the exact handle WordPress Core will use.
+**Note**: All filters include a `$context` parameter as the second parameter and a `$handle` parameter as the third parameter, allowing you to make context-aware decisions and access the exact handle WordPress Core will use.
 
 ## Handle Alignment with WordPress Core
 
@@ -113,25 +178,54 @@ The system ensures perfect alignment with WordPress Core's handle generation fro
 }
 ```
 
-## CSS Filters
-- `enqueues_block_editor_css_register_style_{type}_{foldername}`: Should the style be registered? Default: true.
-- `enqueues_block_editor_css_dependencies_{type}_{foldername}`: Alter the style dependencies.
-- `enqueues_block_editor_css_version_{type}_{foldername}`: Alter the style version.
-- `enqueues_block_editor_css_enqueue_style_{type}_{foldername}`: Should the style be enqueued? Default: true for editor context, false for frontend context.
+## Block Localization Filters
 
-**Note**: Handle customization is not available for blocks since WordPress Core determines handles from `block.json`. Handle filters are only available for plugins and extensions.
+These filters allow you to add localized data to block scripts using the handles that WordPress Core registered from `block.json`:
 
-### Example: Add a Dependency to a Block Style
+### `enqueues_block_editor_js_localized_data_blocks_{block_slug}`
+Filter the localized data for a block script.
+
+**Parameters:**
+- `$data` (array): The localized data array (default: `[]`)
+- `$context` (string): 'frontend' or 'editor'
+- `$script_handle` (string): The exact handle WordPress Core registered
+
+**Example:**
 ```php
-add_filter( 'enqueues_block_editor_css_dependencies_blocks_myblock', function( $deps, $context, $handle ) {
-    $deps[] = 'wp-edit-blocks';
-    return $deps;
+add_filter( 'enqueues_block_editor_js_localized_data_blocks_hero-block', function( $data, $context, $script_handle ) {
+    return [
+        'apiUrl' => rest_url( 'wp/v2/' ),
+        'nonce'  => wp_create_nonce( 'wp_rest' ),
+    ];
 }, 10, 3 );
 ```
 
-**Note**: The filter name uses the folder name of the block/plugin/extension (e.g., `myblock` for a folder named `myblock`).
+### `enqueues_block_editor_js_localized_data_var_name_blocks_{block_slug}`
+Filter the variable name for localized data.
 
-## JS Filters
+**Parameters:**
+- `$var_name` (string): The variable name (default: camelCase of "blockEditor blocks {block_slug} Config")
+- `$context` (string): 'frontend' or 'editor'
+- `$script_handle` (string): The exact handle WordPress Core registered
+
+**Example:**
+```php
+add_filter( 'enqueues_block_editor_js_localized_data_var_name_blocks_hero-block', function( $var_name, $context, $script_handle ) {
+    return 'heroBlockConfig';
+}, 10, 3 );
+```
+
+## Plugin and Extension Filters
+
+These filters work for plugins and extensions (not blocks, since blocks are managed by WordPress Core):
+
+### CSS Filters
+- `enqueues_block_editor_register_style_{type}_{foldername}`: Should the style be registered? Default: true.
+- `enqueues_block_editor_css_dependencies_{type}_{foldername}`: Alter the style dependencies.
+- `enqueues_block_editor_css_version_{type}_{foldername}`: Alter the style version.
+- `enqueues_block_editor_enqueue_style_{type}_{foldername}`: Should the style be enqueued? Default: true for editor context, false for frontend context.
+
+### JS Filters
 - `enqueues_block_editor_js_register_script_{type}_{foldername}`: Should the script be registered? Default: true.
 - `enqueues_block_editor_js_dependencies_{type}_{foldername}`: Alter the script dependencies. Default is from `.asset.php` if present.
 - `enqueues_block_editor_js_version_{type}_{foldername}`: Alter the script version. Default is from `.asset.php` if present.
@@ -140,7 +234,7 @@ add_filter( 'enqueues_block_editor_css_dependencies_blocks_myblock', function( $
 - `enqueues_block_editor_js_localized_data_var_name_{type}_{foldername}`: Customize the variable name for localized JS data.
 - `enqueues_block_editor_js_localized_data_{type}_{foldername}`: Customize the data array for localized JS variables.
 
-**Note**: Handle customization is not available for blocks since WordPress Core determines handles from `block.json`. Handle filters are only available for plugins and extensions.
+**Note**: The filter name uses the folder name of the plugin/extension (e.g., `myplugin` for a folder named `myplugin`).
 
 ### Example: Conditionally Register a Plugin Script
 ```php
@@ -149,15 +243,13 @@ add_filter( 'enqueues_block_editor_js_register_script_plugins_myplugin', functio
 }, 10, 3 );
 ```
 
-### Example: Localize Data for a Block Plugin
+### Example: Localize Data for a Plugin Script
 ```php
 add_filter( 'enqueues_block_editor_js_localized_data_plugins_myplugin', function( $data, $context, $handle ) {
     $data['foo'] = 'bar';
     return $data;
 }, 10, 3 );
 ```
-
-**Note**: The filter name uses the folder name of the block/plugin/extension (e.g., `myplugin` for a folder named `myplugin`). 
 
 # MORE FILTERS & ADVANCED OPTIONS
 

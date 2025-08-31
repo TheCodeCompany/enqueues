@@ -5,6 +5,51 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.0] - 2024-12-20
+
+### Added
+- **NEW FEATURE**: Block script localization support
+  - Added `localize_block_scripts()` method to add localized parameters to registered block scripts
+  - Added `enqueues_block_editor_js_localized_data_blocks_{block_slug}` filter for block localization
+  - Added `enqueues_block_editor_js_localized_data_var_name_blocks_{block_slug}` filter for customizing variable names
+  - Blocks can now have localized data even without registering their own scripts
+  - Uses exact handles that WordPress Core registered from `block.json`
+  - Supports both frontend and editor contexts
+- Enhanced block handle tracking with improved data structure
+  - Updated `$blocks` property to use `style_handles`, `view_style_handles`, etc. arrays
+  - Better alignment with WordPress Core's handle structure
+  - Improved type safety and documentation
+
+### Changed
+- **BREAKING CHANGE**: Refactored block editor asset management
+  - Renamed `enqueue_assets()` to `enqueue_plugin_and_extension_assets()` for clarity
+  - Method now only handles plugins and extensions (blocks managed by Core)
+  - Removed block-specific registration logic to prevent conflicts with Core
+  - Updated method documentation to clarify scope and purpose
+- **BREAKING CHANGE**: Updated filter structure for better asset type separation
+  - Block filters now use `{block_slug}` instead of `{foldername}` for clarity
+  - Plugin/extension filters maintain `{type}_{foldername}` pattern
+  - Clear separation between Core-managed blocks and Enqueues-managed plugins/extensions
+- Improved code organization and readability
+  - Updated variable names for better clarity (`$bt` → `$block_type`)
+  - Enhanced method documentation with detailed explanations
+  - Added comprehensive inline comments explaining complex logic
+
+### Fixed
+- **CRITICAL**: Fixed typo in method name (`enqueue_plugin_and_extenmsion_assets` → `enqueue_plugin_and_extension_assets`)
+- **CRITICAL**: Ensured proper hook timing for block localization (priority 20)
+- **CRITICAL**: Fixed potential issues with block handle extraction and tracking
+
+### Documentation
+- **MAJOR UPDATE**: Comprehensive documentation overhaul
+  - Added "Order of Operations" section explaining WordPress Core vs Enqueues timing
+  - Added "Block Localization Filters" section with examples
+  - Updated filter documentation to clarify asset type separation
+  - Added detailed explanations of why specific hook priorities are used
+  - Removed outdated shim handle documentation
+  - Updated FILTERS.md with asset type annotations for all block editor filters
+  - Added explanatory notes about filter scope and usage
+
 ## [1.2.0] - 2024-12-20
 
 ### Added

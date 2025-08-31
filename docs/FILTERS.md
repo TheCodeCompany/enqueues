@@ -54,22 +54,29 @@ This page lists **all** filters and actions available in the Enqueues MU Plugin,
 
 ## Block Editor
 
-| Filter/Action                                         | Summary                                                        | Docs                                                        |
-|:------------------------------------------------------|:---------------------------------------------------------------|:------------------------------------------------------------|
-| `enqueues_block_editor_register_style_{type}_{foldername}` | Enable/disable registration of block editor CSS.             | [Block Editor Filters](BLOCK-EDITOR.md#filters-for-block-assets) |
-| `enqueues_block_editor_css_dependencies_{type}_{foldername}` | Filter dependencies for block editor CSS.                   | [Block Editor Filters](BLOCK-EDITOR.md#filters-for-block-assets) |
-| `enqueues_block_editor_css_version_{type}_{foldername}`  | Filter version for block editor CSS.                           | [Block Editor Filters](BLOCK-EDITOR.md#filters-for-block-assets) |
-| `enqueues_block_editor_enqueue_style_{type}_{foldername}` | Enable/disable enqueue for block editor CSS.                  | [Block Editor Filters](BLOCK-EDITOR.md#filters-for-block-assets) |
-| `enqueues_block_editor_js_args_{type}_{foldername}`      | Filter args for block editor JS.                               | [Block Editor Filters](BLOCK-EDITOR.md#filters-for-block-assets) |
-| `enqueues_block_editor_js_register_script_{type}_{foldername}` | Enable/disable registration of block editor JS.            | [Block Editor Filters](BLOCK-EDITOR.md#filters-for-block-assets) |
-| `enqueues_block_editor_js_dependencies_{type}_{foldername}` | Filter dependencies for block editor JS.                    | [Block Editor Filters](BLOCK-EDITOR.md#filters-for-block-assets) |
-| `enqueues_block_editor_js_version_{type}_{foldername}`   | Filter version for block editor JS.                            | [Block Editor Filters](BLOCK-EDITOR.md#filters-for-block-assets) |
-| `enqueues_block_editor_js_enqueue_script_{type}_{foldername}` | Enable/disable enqueue for block editor JS.                 | [Block Editor Filters](BLOCK-EDITOR.md#filters-for-block-assets) |
-| `enqueues_block_editor_js_localized_data_{type}_{foldername}` | Filter localized data for block editor JS.                  | [Block Editor Filters](BLOCK-EDITOR.md#filters-for-block-assets) |
-| `enqueues_block_editor_js_localized_data_var_name_{type}_{foldername}` | Filter the variable name for localized data for block editor JS. | [Block Editor Filters](BLOCK-EDITOR.md#filters-for-block-assets) |
-| `enqueues_block_editor_namespace`                      | Filter the block editor namespace.                             | [Block Editor Filters](BLOCK-EDITOR.md#more-filters--advanced-options) |
-| `enqueues_block_editor_dist_dir`                       | Filter the block editor dist directory.                        | [Block Editor Filters](BLOCK-EDITOR.md#more-filters--advanced-options) |
-| `enqueues_block_editor_categories`                     | Filter block editor categories.                                | [Block Editor Filters](BLOCK-EDITOR.md#more-filters--advanced-options) |
+**Note**: Block editor filters are separated by asset type:
+- **Blocks**: Managed by WordPress Core via `block.json`. Only localization filters are available.
+- **Plugins/Extensions**: Fully managed by Enqueues with complete filter control.
+- **All**: Apply to the entire block editor system.
+
+| Filter/Action                                         | Summary                                                        | Asset Type | Docs                                                        |
+|:------------------------------------------------------|:---------------------------------------------------------------|:-----------|:------------------------------------------------------------|
+| `enqueues_block_editor_js_localized_data_blocks_{block_slug}` | Filter localized data for block scripts.                   | **Blocks** | [Block Editor Filters](BLOCK-EDITOR.md#block-localization-filters) |
+| `enqueues_block_editor_js_localized_data_var_name_blocks_{block_slug}` | Filter variable name for block localized data.            | **Blocks** | [Block Editor Filters](BLOCK-EDITOR.md#block-localization-filters) |
+| `enqueues_block_editor_register_style_{type}_{foldername}` | Enable/disable registration of plugin/extension CSS.       | **Plugins/Extensions** | [Block Editor Filters](BLOCK-EDITOR.md#plugin-and-extension-filters) |
+| `enqueues_block_editor_css_dependencies_{type}_{foldername}` | Filter dependencies for plugin/extension CSS.              | **Plugins/Extensions** | [Block Editor Filters](BLOCK-EDITOR.md#plugin-and-extension-filters) |
+| `enqueues_block_editor_css_version_{type}_{foldername}`  | Filter version for plugin/extension CSS.                      | **Plugins/Extensions** | [Block Editor Filters](BLOCK-EDITOR.md#plugin-and-extension-filters) |
+| `enqueues_block_editor_enqueue_style_{type}_{foldername}` | Enable/disable enqueue for plugin/extension CSS.             | **Plugins/Extensions** | [Block Editor Filters](BLOCK-EDITOR.md#plugin-and-extension-filters) |
+| `enqueues_block_editor_js_args_{type}_{foldername}`      | Filter args for plugin/extension JS.                          | **Plugins/Extensions** | [Block Editor Filters](BLOCK-EDITOR.md#plugin-and-extension-filters) |
+| `enqueues_block_editor_js_register_script_{type}_{foldername}` | Enable/disable registration of plugin/extension JS.       | **Plugins/Extensions** | [Block Editor Filters](BLOCK-EDITOR.md#plugin-and-extension-filters) |
+| `enqueues_block_editor_js_dependencies_{type}_{foldername}` | Filter dependencies for plugin/extension JS.               | **Plugins/Extensions** | [Block Editor Filters](BLOCK-EDITOR.md#plugin-and-extension-filters) |
+| `enqueues_block_editor_js_version_{type}_{foldername}`   | Filter version for plugin/extension JS.                       | **Plugins/Extensions** | [Block Editor Filters](BLOCK-EDITOR.md#plugin-and-extension-filters) |
+| `enqueues_block_editor_js_enqueue_script_{type}_{foldername}` | Enable/disable enqueue for plugin/extension JS.            | **Plugins/Extensions** | [Block Editor Filters](BLOCK-EDITOR.md#plugin-and-extension-filters) |
+| `enqueues_block_editor_js_localized_data_{type}_{foldername}` | Filter localized data for plugin/extension JS.             | **Plugins/Extensions** | [Block Editor Filters](BLOCK-EDITOR.md#plugin-and-extension-filters) |
+| `enqueues_block_editor_js_localized_data_var_name_{type}_{foldername}` | Filter variable name for plugin/extension localized data. | **Plugins/Extensions** | [Block Editor Filters](BLOCK-EDITOR.md#plugin-and-extension-filters) |
+| `enqueues_block_editor_namespace`                      | Filter the block editor namespace.                             | **All** | [Block Editor Filters](BLOCK-EDITOR.md#more-filters--advanced-options) |
+| `enqueues_block_editor_dist_dir`                       | Filter the block editor dist directory.                        | **All** | [Block Editor Filters](BLOCK-EDITOR.md#more-filters--advanced-options) |
+| `enqueues_block_editor_categories`                     | Filter block editor categories.                                | **All** | [Block Editor Filters](BLOCK-EDITOR.md#more-filters--advanced-options) |
 
 ---
 
