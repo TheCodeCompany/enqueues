@@ -74,12 +74,6 @@ function getCopyPluginConfigBlockJsonPattern(rootDir, distDir, srcDirPattern = '
 			// Replace the base src path with distDir for final destination
 			return `${distDir}/${blockDir}/${blockName}/block.json`;
 		},
-		transform(content, absolutePath) {
-			const contentStr = content.toString();
-			const segments = absolutePath.split('/');
-			const blockName = segments[segments.length - 2];
-			return contentStr.replace('[1]', blockName);
-		},
 		noErrorOnMissing: true,
 	};
 }
@@ -102,12 +96,6 @@ function getCopyPluginConfigRenderPhpPattern(rootDir, distDir, srcDirPattern = '
 			const blockName = segments[segments.length - 2];
 			// Replace the base src path with distDir for final destination
 			return `${distDir}/${blockDir}/${blockName}/render.php`;
-		},
-		transform(content, absolutePath) {
-			const contentStr = content.toString();
-			const segments = absolutePath.split('/');
-			const blockName = segments[segments.length - 2];
-			return contentStr.replace('[1]', blockName);
 		},
 		noErrorOnMissing: true,
 	};

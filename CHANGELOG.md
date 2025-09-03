@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.1] - 2025-09-03
+
+### Fixed
+- **BUGFIX**: Fixed incorrect file pattern routing in copy plugin configuration
+  - Removed unnecessary `transform` function from `getCopyPluginConfigBlockJsonPattern`
+  - Fixed issue where render-php files were incorrectly using block-json pattern with transforms
+  - Eliminated dead code and improved copy operation performance
+  - Render-php files now copy correctly without unwanted content transformations
+
+### Changed
+- Cleaned up `enqueues-copy-plugin-config-pattern.js` by removing unused transform logic
+- Simplified copy operations to focus on file movement rather than content modification
+
 ## [1.3.0] - 2024-12-20
 
 ### Added
