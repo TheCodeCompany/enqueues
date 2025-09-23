@@ -185,17 +185,15 @@ class EnqueueAssets {
 		$template_files = $this->get_theme_template_files( $theme_directory );
 
 		// Search for custom post types.
-		$post_types = get_post_types( [ 'public' => true ], 'names' );
+		$raw_post_types = get_post_types( [ 'public' => true ], 'names' );
 
 		// Map custom post types to the 'single-{post_type}' format.
-		if ( $post_types ) {
+		if ( $raw_post_types ) {
 			$post_types = array_values(
 				array_map(
-					function ( $post_type ) {
-						return "single-{$post_type}";
-					},
-					$post_types
-				)
+					fn( $post_type ) => "single-{$post_type}",
+					$raw_post_types,
+				),
 			);
 
 			// Add slugified versions of post types for compatibility.
@@ -205,8 +203,8 @@ class EnqueueAssets {
 						$slugified = string_slugify( $post_type );
 						return "single-{$slugified}";
 					},
-					$post_types
-				)
+					$raw_post_types,
+				),
 			);
 
 			// Merge original and slugified versions, removing duplicates.
