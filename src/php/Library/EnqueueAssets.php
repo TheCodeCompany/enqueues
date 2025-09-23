@@ -14,6 +14,7 @@ use RecursiveDirectoryIterator;
 use function Enqueues\get_cache_ttl;
 use function Enqueues\get_page_type;
 use function Enqueues\is_cache_enabled;
+use function Enqueues\string_slugify;
 
 /**
  * Class responsible for enqueuing the theme's main stylesheet and scripts based on page type, template, or post type.
@@ -83,12 +84,19 @@ class EnqueueAssets {
 		if ( 'single' === $page_type &&
 			$this->get_theme_default_enqueue_asset_filename() === $file_name ) {
 
-			$post_type_slug    = get_post_type();
-			$possible_filename = "single-{$post_type_slug}";
+			$post_type_slug     = get_post_type();
+			$post_type_filename = "single-{$post_type_slug}";
 
 			// Update the file name if the post type is in the allowed list.
-			if ( in_array( $possible_filename, $allowed_page_types_and_templates, true ) ) {
-				$file_name = $possible_filename;
+			if ( in_array( $post_type_filename, $allowed_page_types_and_templates, true ) ) {
+				$file_name = $post_type_filename;
+			} elseif ( string_slugify( $post_type_filename ) !== $post_type_filename ) {
+
+				$post_type_filename = string_slugify( $post_type_filename );
+
+				if ( in_array( $post_type_filename, $allowed_page_types_and_templates, true ) ) {
+					$file_name = $post_type_filename;
+				}
 			}
 		}
 
