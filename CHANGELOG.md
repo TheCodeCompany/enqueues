@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.2] - 2025-09-23
+
+### Added
+- **ENHANCEMENT**: Post type slugification support for theme asset loading
+  - Added support for post types with underscores (e.g., `film_simulation`) by checking both original and slugified formats
+  - Enhanced `get_enqueues_theme_allowed_page_types_and_templates()` to include slugified post type versions
+  - Improved compatibility between registered post type slugs and file naming conventions
+  - Theme assets now load correctly for custom post types with non-standard slug formats
+
+### Changed
+- Updated post type detection logic to check both `single-{post_type}` and `single-{slugified_post_type}` formats
+- Enhanced asset loading flexibility for custom post types with underscores or special characters
+
 ## [1.3.1] - 2025-09-03
 
 ### Fixed

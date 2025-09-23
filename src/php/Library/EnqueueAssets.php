@@ -197,6 +197,20 @@ class EnqueueAssets {
 					$post_types
 				)
 			);
+
+			// Add slugified versions of post types for compatibility.
+			$slugified_post_types = array_values(
+				array_map(
+					function ( $post_type ) {
+						$slugified = string_slugify( $post_type );
+						return "single-{$slugified}";
+					},
+					$post_types
+				)
+			);
+
+			// Merge original and slugified versions, removing duplicates.
+			$post_types = array_unique( array_merge( $post_types, $slugified_post_types ) );
 		}
 
 		// Add the current page type by default, such as 'homepage', 'page', 'single', etc.
