@@ -84,7 +84,7 @@ class ThemeEnqueueMainController extends Controller {
 			$css_handle = apply_filters( "enqueues_theme_css_handle_{$css_data['handle']}", $css_data['handle'] );
 			$css_src    = $css_data['url'];
 			$css_file   = $css_data['file'];
-			$css_deps   = apply_filters( "enqueues_theme_css_dependencies_{$css_data['handle']}", 'all' );
+			$css_deps   = apply_filters( "enqueues_theme_css_dependencies_{$css_data['handle']}", [] );
 			$css_ver    = apply_filters( "enqueues_theme_css_version_{$css_data['handle']}", $css_data['ver'] );
 			$css_media  = apply_filters( "enqueues_theme_css_media_{$css_data['handle']}", 'all' );
 

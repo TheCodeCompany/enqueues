@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.3] - 2025-01-27
+
+### Fixed
+- **BUGFIX**: Fixed CSS dependencies default value in theme asset loading
+  - Changed default value from string `'all'` to empty array `[]` for `enqueues_theme_css_dependencies_{handle}` filter
+  - Ensures compatibility with WordPress `wp_register_style()` and `wp_enqueue_style()` functions
+  - Prevents potential PHP warnings and unexpected behavior from invalid dependency format
+  - Maintains backward compatibility while following WordPress coding standards
+
 ## [1.3.2] - 2025-09-23
 
 ### Added
