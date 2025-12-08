@@ -77,6 +77,40 @@ When implementing this fix:
 - You can add custom block categories or plugins using filters.
 - Block editor assets (JS/CSS) are loaded automatically based on naming conventions.
 
+## Performance Optimizations
+
+### Block Registration Caching
+
+The system includes several performance optimizations to minimize filesystem operations during block registration:
+
+**Cached Block Registry Scan:**
+- Block directory scan is cached with build signature for auto-invalidation
+- Block metadata (handles, dynamic flags) is cached to avoid repeated glob operations
+- Cache automatically invalidates when build signature changes (new deployment)
+
+**Request-Level Guards:**
+- Block registration runs only once per request (static flag prevents multiple executions)
+- Blocks are checked against the registry before calling `register_block_type_from_metadata()`
+- Skips expensive filesystem lookups if blocks are already registered
+
+**Optimized Dynamic Block Detection:**
+- `has_block()` calls are batched by concatenating post content once per query
+- Reduces the number of string searches when detecting which blocks are present on a page
+
+**Cache Management:**
+```php
+// Flush block registry cache (useful after adding/removing blocks)
+do_action( 'enqueues_flush_block_cache' );
+
+// Automatic invalidation on theme switch
+// Cache automatically invalidates when build signature changes
+```
+
+**Performance Impact:**
+- Reduces filesystem operations from hundreds per request to a single cached lookup
+- Eliminates redundant calls to `register_block_type_from_metadata()` and its nested functions
+- Significantly improves performance on high-traffic multisite installations
+
 ## Using Filters for Block Assets
 
 ### Block Localization Filters

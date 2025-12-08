@@ -9,6 +9,10 @@
 
 namespace Enqueues;
 
+use function Enqueues\is_cache_enabled;
+use function Enqueues\get_cache_ttl;
+use function Enqueues\get_enqueues_build_signature;
+
 /**
  * Finds the file path for an asset based on the environment.
  *
@@ -18,8 +22,8 @@ namespace Enqueues;
  *
  * Caching Strategy:
  * - Caches asset file paths to avoid repeated file existence checks on every request.
- * - Cache is keyed based on the relative path and file name.
- * - Cached data is stored for 24 hours and automatically invalidated.
+ * - Cache is keyed based on the relative path, file name, directory, and build signature.
+ * - Cached data is stored for the configured TTL and automatically invalidated when assets are rebuilt.
  *
  * @param string      $relative_path The path to the file relative to the specified directory.
  * @param string      $file_name     Name of the file without the extension.
@@ -32,6 +36,18 @@ function asset_find_file_path( string $relative_path, string $file_name, string 
 
 	if ( ! $directory ) {
 		$directory = get_template_directory();
+	}
+
+	// Build cache key including build signature for auto-invalidation.
+	$build_signature = get_enqueues_build_signature();
+	$cache_key       = 'enqueues_asset_path_' . md5( "{$relative_path}:{$file_name}:{$file_ext}:{$directory}:{$build_signature}" );
+
+	// Check cache first.
+	if ( is_cache_enabled() ) {
+		$cached_path = get_transient( $cache_key );
+		if ( false !== $cached_path ) {
+			return $cached_path;
+		}
 	}
 
 	$theme_relative_path_and_file_name = trim( $relative_path, '/' ) . '/' . trim( $file_name, '/' );
@@ -47,6 +63,11 @@ function asset_find_file_path( string $relative_path, string $file_name, string 
 		$file_path = "/{$theme_relative_path_and_file_name}.min.{$file_ext}";
 	} elseif ( file_exists( $standard ) ) {
 		$file_path = "/{$theme_relative_path_and_file_name}.{$file_ext}";
+	}
+
+	// Cache the result (including empty strings for negative lookups).
+	if ( is_cache_enabled() ) {
+		set_transient( $cache_key, $file_path, get_cache_ttl() );
 	}
 
 	return $file_path;
@@ -86,8 +107,8 @@ function display_maybe_missing_local_warning( string $path, string $message ): v
  *
  * Caching Strategy:
  * - Caches asset file data to avoid repeated file existence checks and improve performance.
- * - Cache is keyed based on the file name and file extension.
- * - Cached data is stored for 24 hours and automatically invalidated.
+ * - Cache is keyed based on the file name, extension, directory, and build signature.
+ * - Cached data is stored for the configured TTL and automatically invalidated when assets are rebuilt.
  *
  * @param string      $directory            Directory path where the asset is located.
  * @param string      $directory_uri        URI of the directory for web access.
@@ -108,6 +129,18 @@ function get_asset_page_type_file_data(
 	string $file_ext,
 	string $missing_local_warning = 'Run the npm build for the asset files.',
 ): bool|array {
+
+	// Build cache key including build signature for auto-invalidation.
+	$build_signature = get_enqueues_build_signature();
+	$cache_key       = 'enqueues_asset_data_' . md5( "{$directory}:{$directory_part}:{$file_name}:{$fallback_file_name}:{$file_ext}:{$build_signature}" );
+
+	// Check cache first.
+	if ( is_cache_enabled() ) {
+		$cached_data = get_transient( $cache_key );
+		if ( false !== $cached_data ) {
+			return $cached_data;
+		}
+	}
 
 	/**
 	 * Filters the source directory used for locating SCSS/SASS/CSS and JS files.
@@ -147,7 +180,7 @@ function get_asset_page_type_file_data(
 	}
 
 	if ( ! empty( $compiled_file_path ) ) {
-		$data = [ 
+		$data = [
 			'handle'   => sanitize_key( $file_name ),
 			'url'      => esc_url( "{$directory_uri}{$compiled_file_path}" ),
 			'file'     => esc_url( "{$directory}{$compiled_file_path}" ),
@@ -164,6 +197,11 @@ function get_asset_page_type_file_data(
 			$data['asset_php']  = file_exists( $asset_php_path ) ? include $asset_php_path : [];
 		}
 
+		// Cache the result.
+		if ( is_cache_enabled() ) {
+			set_transient( $cache_key, $data, get_cache_ttl() );
+		}
+
 		return $data;
 	}
 
@@ -173,7 +211,7 @@ function get_asset_page_type_file_data(
 	}
 
 	if ( ! empty( $compiled_file_path ) ) {
-		$data = [ 
+		$data = [
 			'handle'   => sanitize_key( $fallback_file_name ),
 			'url'      => esc_url( "{$directory_uri}{$compiled_file_path}" ),
 			'file'     => esc_url( "{$directory}{$compiled_file_path}" ),
@@ -190,7 +228,17 @@ function get_asset_page_type_file_data(
 			$data['asset_php']  = file_exists( $asset_php_path ) ? include $asset_php_path : [];
 		}
 
+		// Cache the result.
+		if ( is_cache_enabled() ) {
+			set_transient( $cache_key, $data, get_cache_ttl() );
+		}
+
 		return $data;
+	}
+
+	// Cache negative result to avoid repeated lookups.
+	if ( is_cache_enabled() ) {
+		set_transient( $cache_key, false, get_cache_ttl() );
 	}
 
 	return false;
@@ -308,13 +356,16 @@ function render_asset_inline( $asset ) {
 	if ( $content && 'style' === $type ) {
 		?>
 		<!-- Inline asset: <?php echo esc_html( $element_id ); ?> -->
-		<style id="<?php echo esc_attr( $element_id ); ?>"><?php echo $content; // phpcs:ignore ?></style>
+		<style id="<?php echo esc_attr( $element_id ); ?>">
+			<?php echo $content; // phpcs:ignore ?>
+		</style>
 		<!-- End inline asset: <?php echo esc_html( $element_id ); ?> -->
 		<?php
 	} elseif ( $content && 'script' === $type ) {
 		?>
 		<!-- Inline asset: <?php echo esc_html( $element_id ); ?> -->
-		<script id="<?php echo esc_attr( $element_id ); ?>" type="text/javascript"><?php echo $content; // phpcs:ignore ?></script>
+		<script id="<?php echo esc_attr( $element_id ); ?>"
+			type="text/javascript"><?php echo $content; // phpcs:ignore ?></script>
 		<!-- End inline asset: <?php echo esc_html( $element_id ); ?> -->
 		<?php
 	}

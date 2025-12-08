@@ -103,7 +103,41 @@ add_filter( 'enqueues_render_js_inline', function( $inline, $handle ) {
 }, 10, 2 );
 ```
 
-## Caching Filters
+## Caching & Performance
+
+The Enqueues system includes comprehensive caching to minimize filesystem operations and improve performance, especially on high-traffic multisite installations.
+
+### Caching Strategy
+
+**Automatic Caching:**
+- All asset lookups (`asset_find_file_path()`, `get_asset_page_type_file_data()`) are cached
+- Template file scans are cached
+- Asset file discovery is cached
+- Block registry scans are cached
+- Negative lookups (file not found) are also cached to avoid repeated checks
+
+**Build Signature Auto-Invalidation:**
+- Cache keys include a build signature derived from main asset file modification times
+- When assets are rebuilt (new deployment), the signature changes and caches automatically invalidate
+- No manual cache flushing required after deployments
+- Build signature respects the `enqueues_theme_default_enqueue_asset_filename` filter
+
+**Cache Configuration:**
+```php
+// Enable caching (default: true)
+define( 'ENQUEUES_CACHE_ENABLED', true );
+
+// Set cache TTL in seconds (default: 12 hours)
+define( 'ENQUEUES_CACHE_TTL', 12 * HOUR_IN_SECONDS );
+```
+
+**Manual Cache Flush:**
+```php
+// Flush all Enqueues caches
+\Enqueues\flush_enqueues_cache();
+```
+
+### Caching Filters
 - `enqueues_is_cache_enabled`: Enable/disable caching for asset lookups. Example:
 ```php
 add_filter( 'enqueues_is_cache_enabled', '__return_false' ); // Disable caching in dev
@@ -112,6 +146,14 @@ add_filter( 'enqueues_is_cache_enabled', '__return_false' ); // Disable caching 
 ```php
 add_filter( 'enqueues_cache_ttl', function() { return 3600; }); // 1 hour
 ```
+
+### Performance Best Practices
+
+1. **Always use Enqueues helpers**: `asset_find_file_path()` and `get_asset_page_type_file_data()` are cached and optimized
+2. **Avoid direct filesystem calls**: Use Enqueues functions instead of `file_exists()`, `filemtime()`, etc.
+3. **Leverage caching**: Results are automatically cached, so repeated calls are fast
+4. **Respect build signatures**: Cache keys include build signatures, so caches auto-invalidate on deployments
+5. **Use filters for customisation**: Don't bypass the system; use filters to modify behavior
 
 ## Directory & File Extension Filters
 - `enqueues_theme_allowed_page_types_and_templates`: Control which page types/templates are scanned for assets.

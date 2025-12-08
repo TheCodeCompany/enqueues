@@ -55,9 +55,11 @@ This page lists **all** filters and actions available in the Enqueues MU Plugin,
 ## Block Editor
 
 **Note**: Block editor filters are separated by asset type:
-- **Blocks**: Managed by WordPress Core via `block.json`. Only localization filters are available.
+- **Blocks**: Managed by WordPress Core via `block.json`. Only localization filters are available. Block registration is cached for performance.
 - **Plugins/Extensions**: Fully managed by Enqueues with complete filter control.
 - **All**: Apply to the entire block editor system.
+
+**Performance Note**: Block registration includes request-level guards and caching to minimize filesystem operations. See [Performance Optimizations](BLOCK-EDITOR.md#performance-optimizations) for details.
 
 | Filter/Action                                         | Summary                                                        | Asset Type | Docs                                                        |
 |:------------------------------------------------------|:---------------------------------------------------------------|:-----------|:------------------------------------------------------------|
@@ -93,8 +95,14 @@ This page lists **all** filters and actions available in the Enqueues MU Plugin,
 
 | Filter/Action                      | Summary                                         | Docs                                         |
 |:-----------------------------------|:------------------------------------------------|:---------------------------------------------|
-| `enqueues_is_cache_enabled`        | Filter whether caching is enabled.               | [Caching](THEME-ASSETS.md#caching)           |
-| `enqueues_cache_ttl`               | Filter the cache time-to-live.                   | [Caching](THEME-ASSETS.md#caching)           |
+| `enqueues_is_cache_enabled`        | Filter whether caching is enabled.               | [Caching](THEME-ASSETS.md#caching--performance) |
+| `enqueues_cache_ttl`               | Filter the cache time-to-live (TTL) in seconds.  | [Caching](THEME-ASSETS.md#caching--performance) |
+| `enqueues_cache_flushed`           | Action fired after cache flush completes.        | [Caching](THEME-ASSETS.md#caching--performance) |
+| `enqueues_flush_block_cache`       | Action to flush block registry cache.            | [Block Editor](BLOCK-EDITOR.md#performance-optimizations) |
+
+**Cache Helper Functions:**
+- `\Enqueues\flush_enqueues_cache()`: Flush all Enqueues-related caches
+- `\Enqueues\get_enqueues_build_signature()`: Get current build signature (internal)
 
 ---
 

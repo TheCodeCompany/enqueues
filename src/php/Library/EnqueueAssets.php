@@ -15,6 +15,7 @@ use function Enqueues\get_cache_ttl;
 use function Enqueues\get_page_type;
 use function Enqueues\is_cache_enabled;
 use function Enqueues\string_slugify;
+use function Enqueues\get_enqueues_build_signature;
 
 /**
  * Class responsible for enqueuing the theme's main stylesheet and scripts based on page type, template, or post type.
@@ -170,13 +171,27 @@ class EnqueueAssets {
 	 * It also checks registered post types and includes files for them if they exist.
 	 *
 	 * Caching Strategy:
-	 * - Caches the allowed page types and templates for 24 hours using WordPress transients.
-	 * - The cache is keyed based on the page types and templates to ensure uniqueness.
+	 * - Caches the allowed page types and templates for the configured TTL using WordPress transients.
+	 * - The cache is keyed based on the build signature and locale/site to ensure uniqueness.
 	 * - Cache improves performance by avoiding repeated file system lookups on every request.
 	 *
 	 * @return array List of allowed page types and templates.
 	 */
 	public function get_enqueues_theme_allowed_page_types_and_templates(): array {
+
+		// Build cache key with build signature and locale/site for auto-invalidation.
+		$build_signature = get_enqueues_build_signature();
+		$locale          = function_exists( 'get_locale' ) ? get_locale() : 'default';
+		$site_id         = get_current_blog_id();
+		$cache_key       = 'enqueues_allowed_page_types_' . md5( "{$build_signature}:{$locale}:{$site_id}" );
+
+		// Check cache first.
+		if ( is_cache_enabled() ) {
+			$cached_allowed = get_transient( $cache_key );
+			if ( false !== $cached_allowed ) {
+				return $cached_allowed;
+			}
+		}
 
 		// Get theme directory path.
 		$theme_directory = get_template_directory();
@@ -228,15 +243,22 @@ class EnqueueAssets {
 		 *
 		 * @param array $allowed The default allowed page types and templates.
 		 */
-		return apply_filters( 'enqueues_theme_allowed_page_types_and_templates', $allowed );
+		$allowed = apply_filters( 'enqueues_theme_allowed_page_types_and_templates', $allowed );
+
+		// Cache the result.
+		if ( is_cache_enabled() ) {
+			set_transient( $cache_key, $allowed, get_cache_ttl() );
+		}
+
+		return $allowed;
 	}
 
 	/**
 	 * Get template files from the theme directory.
 	 *
 	 * Caching Strategy:
-	 * - Results are cached for 24 hours to avoid repeated file system access.
-	 * - The cache key is static (`enqueues_theme_template_files`) because the content doesn't change frequently.
+	 * - Results are cached for the configured TTL to avoid repeated file system access.
+	 * - The cache key includes the build signature to auto-invalidate on deployments.
 	 * - This reduces I/O operations and improves page load performance.
 	 *
 	 * @param string $theme_directory The path to the theme directory.
@@ -245,10 +267,11 @@ class EnqueueAssets {
 	 */
 	protected function get_theme_template_files( string $theme_directory ): array {
 
-		// Try to get the cached value first.
-		$cache_key      = 'enqueues_theme_template_files';
-		$template_files = is_cache_enabled() ? get_transient( $cache_key ) : false;
-		if ( $template_files ) {
+		// Build cache key with build signature for auto-invalidation.
+		$build_signature = get_enqueues_build_signature();
+		$cache_key       = 'enqueues_theme_template_files_' . $build_signature;
+		$template_files  = is_cache_enabled() ? get_transient( $cache_key ) : false;
+		if ( false !== $template_files ) {
 			return $template_files;
 		}
 
@@ -307,8 +330,9 @@ class EnqueueAssets {
 	 * Get asset files from the theme directory corresponding to known page types and templates.
 	 *
 	 * Caching Strategy:
-	 * - Results are cached for 24 hours.
-	 * - A unique cache key is generated using the MD5 hash of the known files array to ensure the cache key is unique to the combination of page types and templates.
+	 * - Results are cached for the configured TTL.
+	 * - A unique cache key is generated using the MD5 hash of the known files array and build signature
+	 *   to ensure the cache key is unique to the combination of page types, templates, and current build.
 	 *
 	 * @param string $theme_directory The path to the theme directory.
 	 * @param array  $known_files     Array of known page types and template filenames.
@@ -316,10 +340,11 @@ class EnqueueAssets {
 	 */
 	protected function get_enqueue_asset_files( string $theme_directory, array $known_files ): array {
 
-		// Cache key based on known files for uniqueness.
-		$cache_key           = 'enqueues_asset_files_' . md5( wp_json_encode( $known_files ) );
+		// Build cache key with build signature for auto-invalidation.
+		$build_signature     = get_enqueues_build_signature();
+		$cache_key           = 'enqueues_asset_files_' . md5( wp_json_encode( $known_files ) . $build_signature );
 		$enqueue_asset_files = is_cache_enabled() ? get_transient( $cache_key ) : false;
-		if ( $enqueue_asset_files ) {
+		if ( false !== $enqueue_asset_files ) {
 			return $enqueue_asset_files;
 		}
 

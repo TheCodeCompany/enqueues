@@ -51,6 +51,9 @@ use function Enqueues\get_block_editor_namespace;
 use function Enqueues\get_block_editor_dist_dir;
 use function Enqueues\get_block_editor_categories;
 use function Enqueues\string_camelcaseify;
+use function Enqueues\is_cache_enabled;
+use function Enqueues\get_cache_ttl;
+use function Enqueues\get_enqueues_build_signature;
 
 /**
  * Controller that integrates with the Block Editor (Gutenberg) to:
@@ -91,7 +94,7 @@ class BlockEditorRegistrationController extends Controller {
 	 *
 	 * @var array{dynamic: array<string, array>, static: array<string, array>}
 	 */
-	protected $blocks = [ 
+	protected $blocks = [
 		'dynamic' => [],
 		'static'  => [],
 	];
@@ -126,6 +129,12 @@ class BlockEditorRegistrationController extends Controller {
 		add_action( 'init', [ $this, 'register_blocks' ] );
 		add_filter( 'block_categories_all', [ $this, 'block_categories' ], 10, 2 );
 
+		// Invalidate block cache on theme switch.
+		add_action( 'after_switch_theme', [ $this, 'flush_block_cache' ] );
+
+		// Allow manual cache flush via action.
+		add_action( 'enqueues_flush_block_cache', [ $this, 'flush_block_cache' ] );
+
 		// Pre-enqueue dynamic block styles so they print in <head>.
 		add_action( 'wp_enqueue_scripts', [ $this, 'preenqueue_dynamic_block_styles' ], 1 );
 
@@ -143,19 +152,48 @@ class BlockEditorRegistrationController extends Controller {
 	 * We use Core's metadata registration so Core registers the correct handles from block.json.
 	 * While doing that, we detect *dynamic* blocks and remember their style handles for pre-enqueue.
 	 *
+	 * Caching Strategy:
+	 * - Caches the block registry scan to avoid repeated glob operations on every request.
+	 * - Cache key includes build signature to auto-invalidate on deployments.
+	 * - Block registration still happens via Core, but metadata is cached for performance.
+	 * - Uses request-level static flag to ensure blocks are only processed once per request.
+	 *
 	 * @return void
 	 */
 	public function register_blocks() {
+		// Request-level guard to prevent multiple registrations in the same request.
+		static $registered = false;
+		if ( $registered ) {
+			return;
+		}
 
 		$directory                  = get_template_directory();
 		$block_editor_dist_dir_path = get_block_editor_dist_dir();
 		$blocks_root                = "{$directory}{$block_editor_dist_dir_path}/blocks";
 
 		if ( ! is_dir( $blocks_root ) ) {
+			$registered = true;
 			return;
 		}
 
-		$ns = get_block_editor_namespace();
+		// Build cache key with build signature for auto-invalidation.
+		$build_signature = get_enqueues_build_signature();
+		$cache_key       = 'enqueues_block_registry_' . md5( "{$blocks_root}:{$build_signature}" );
+
+		// Try to load cached block metadata.
+		$cached_blocks = is_cache_enabled() ? get_transient( $cache_key ) : false;
+
+		if ( false !== $cached_blocks && is_array( $cached_blocks ) ) {
+			// Use cached block metadata, but still register blocks with Core.
+			$this->blocks = $cached_blocks;
+			$this->register_blocks_from_cache( $blocks_root );
+			$registered = true;
+			return;
+		}
+
+		// Cache miss: scan and register blocks.
+		$ns             = get_block_editor_namespace();
+		$block_registry = WP_Block_Type_Registry::get_instance();
 
 		foreach ( array_filter( glob( "{$blocks_root}/*" ), 'is_dir' ) as $block_dir ) {
 			$block_name    = basename( $block_dir );
@@ -170,25 +208,30 @@ class BlockEditorRegistrationController extends Controller {
 
 			$full_name = "{$ns}/{$block_name}";
 
-			// Let Core register default handles (style/viewStyle/editorStyle/viewScript/editorScript, etc.)
-			$result = register_block_type_from_metadata( $metadata_file );
+			// Check if block is already registered to avoid redundant filesystem lookups.
+			$block_type = $block_registry->get_registered( $full_name );
 
-			if ( ! $result ) {
-				if ( is_local() ) {
-					wp_die( sprintf( 'Block %s failed to register.', $full_name ), E_USER_ERROR ); // phpcs:ignore
-				}
-				continue;
-			}
-
-			// Pull exact handles from the registry for perfect alignment with Core.
-			$block_type = WP_Block_Type_Registry::get_instance()->get_registered( $full_name );
 			if ( ! $block_type ) {
-				continue;
+				// Block not registered yet - register it with Core.
+				$result = register_block_type_from_metadata( $metadata_file );
+
+				if ( ! $result ) {
+					if ( is_local() ) {
+						wp_die( sprintf( 'Block %s failed to register.', $full_name ), E_USER_ERROR ); // phpcs:ignore
+					}
+					continue;
+				}
+
+				// Pull exact handles from the registry after registration.
+				$block_type = $block_registry->get_registered( $full_name );
+				if ( ! $block_type ) {
+					continue;
+				}
 			}
 
 			$is_dynamic = ( isset( $block_type->render_callback ) && $block_type->render_callback ) || file_exists( "{$block_dir}/render.php" );
 
-			$handles = [ 
+			$handles = [
 				'style_handles'         => isset( $block_type->style_handles ) ? (array) $block_type->style_handles : [],
 				'view_style_handles'    => isset( $block_type->view_style_handles ) ? (array) $block_type->view_style_handles : [],
 				'editor_style_handles'  => isset( $block_type->editor_style_handles ) ? (array) $block_type->editor_style_handles : [],
@@ -200,6 +243,71 @@ class BlockEditorRegistrationController extends Controller {
 			// Track dynamic blocks for CLS prevention.
 			$this->blocks[ $is_dynamic ? 'dynamic' : 'static' ][ $full_name ] = $handles;
 		}
+
+		// Cache the block metadata for future requests.
+		if ( is_cache_enabled() ) {
+			set_transient( $cache_key, $this->blocks, get_cache_ttl() );
+		}
+
+		$registered = true;
+	}
+
+	/**
+	 * Register blocks from cached metadata.
+	 *
+	 * When using cached block metadata, we check if blocks are already registered
+	 * before calling register_block_type_from_metadata() to avoid expensive filesystem lookups.
+	 * This significantly reduces the number of calls to Core's registration function.
+	 *
+	 * @param string $blocks_root The root directory containing blocks.
+	 *
+	 * @return void
+	 */
+	private function register_blocks_from_cache( string $blocks_root ): void {
+		$ns             = get_block_editor_namespace();
+		$block_registry = WP_Block_Type_Registry::get_instance();
+
+		foreach ( array_filter( glob( "{$blocks_root}/*" ), 'is_dir' ) as $block_dir ) {
+			$block_name    = basename( $block_dir );
+			$metadata_file = "{$blocks_root}/{$block_name}/block.json";
+
+			if ( ! file_exists( $metadata_file ) ) {
+				continue;
+			}
+
+			$full_name = "{$ns}/{$block_name}";
+
+			// Skip registration if block is already registered (avoids expensive filesystem lookups).
+			if ( $block_registry->is_registered( $full_name ) ) {
+				continue;
+			}
+
+			// Only register if not already in the registry.
+			register_block_type_from_metadata( $metadata_file );
+		}
+	}
+
+	/**
+	 * Flush the block registry cache.
+	 *
+	 * Called on theme switch or can be triggered manually via the
+	 * `enqueues_flush_block_cache` action.
+	 *
+	 * @return void
+	 */
+	public function flush_block_cache(): void {
+		$directory                  = get_template_directory();
+		$block_editor_dist_dir_path = get_block_editor_dist_dir();
+		$blocks_root                = "{$directory}{$block_editor_dist_dir_path}/blocks";
+
+		if ( ! is_dir( $blocks_root ) ) {
+			return;
+		}
+
+		$build_signature = get_enqueues_build_signature();
+		$cache_key       = 'enqueues_block_registry_' . md5( "{$blocks_root}:{$build_signature}" );
+
+		delete_transient( $cache_key );
 	}
 
 	/**
@@ -248,6 +356,8 @@ class BlockEditorRegistrationController extends Controller {
 	 * Without this, dynamic block styles would be discovered during render and output
 	 * via print_late_styles() near the footer, causing visible content shifts.
 	 *
+	 * Optimized to batch has_block() calls by concatenating content once per query.
+	 *
 	 * @return void
 	 */
 	public function preenqueue_dynamic_block_styles(): void {
@@ -255,42 +365,42 @@ class BlockEditorRegistrationController extends Controller {
 			return;
 		}
 
-		$maybe_enqueue = function ( $content ) {
-			if ( ! is_string( $content ) || '' === $content ) {
-				return;
+		$content_blob = '';
+
+		// Gather all content in one pass to minimize has_block() calls.
+		if ( is_singular() ) {
+			$post = get_post();
+			if ( $post && isset( $post->post_content ) && is_string( $post->post_content ) ) {
+				$content_blob = $post->post_content;
 			}
-			foreach ( $this->blocks['dynamic'] as $block_name => $handles ) {
-				if ( has_block( $block_name, $content ) ) {
-					// Enqueue all frontend style handles (style + viewStyle) so CSS prints in <head>.
-					$style_handles      = isset( $handles['style_handles'] ) ? (array) $handles['style_handles'] : [];
-					$view_style_handles = isset( $handles['view_style_handles'] ) ? (array) $handles['view_style_handles'] : [];
-					foreach ( array_merge( $style_handles, $view_style_handles ) as $style_handle ) {
-						if ( is_string( $style_handle ) && '' !== $style_handle ) {
-							wp_enqueue_style( $style_handle );
-						}
+		} else {
+			// Archives / home: inspect main query posts (lightweight heuristic).
+			global $wp_query;
+			if ( isset( $wp_query->posts ) && is_array( $wp_query->posts ) ) {
+				foreach ( $wp_query->posts as $p ) {
+					if ( isset( $p->post_content ) && is_string( $p->post_content ) ) {
+						$content_blob .= $p->post_content . "\n";
 					}
 				}
 			}
-		};
+		}
 
-		if ( is_singular() ) {
-			$post = get_post();
-			if ( $post && isset( $post->post_content ) ) {
-				$maybe_enqueue( $post->post_content );
-			}
+		if ( '' === $content_blob ) {
 			return;
 		}
 
-		// Archives / home: inspect main query posts (lightweight heuristic).
-		global $wp_query;
-		if ( isset( $wp_query->posts ) && is_array( $wp_query->posts ) ) {
-			$blob = '';
-			foreach ( $wp_query->posts as $p ) {
-				if ( isset( $p->post_content ) && is_string( $p->post_content ) ) {
-					$blob .= $p->post_content . "\n";
+		// Batch check all dynamic blocks against the concatenated content.
+		foreach ( $this->blocks['dynamic'] as $block_name => $handles ) {
+			if ( has_block( $block_name, $content_blob ) ) {
+				// Enqueue all frontend style handles (style + viewStyle) so CSS prints in <head>.
+				$style_handles      = isset( $handles['style_handles'] ) ? (array) $handles['style_handles'] : [];
+				$view_style_handles = isset( $handles['view_style_handles'] ) ? (array) $handles['view_style_handles'] : [];
+				foreach ( array_merge( $style_handles, $view_style_handles ) as $style_handle ) {
+					if ( is_string( $style_handle ) && '' !== $style_handle ) {
+						wp_enqueue_style( $style_handle );
+					}
 				}
 			}
-			$maybe_enqueue( $blob );
 		}
 	}
 
@@ -304,13 +414,13 @@ class BlockEditorRegistrationController extends Controller {
 	 */
 	public function localize_block_scripts(): void {
 		$context = is_admin() ? 'editor' : 'frontend';
-		
+
 		// Process both static and dynamic blocks for localization.
 		foreach ( [ 'static', 'dynamic' ] as $block_type ) {
 			foreach ( $this->blocks[ $block_type ] as $block_name => $handles ) {
 				$block_parts = explode( '/', $block_name );
 				$block_slug  = end( $block_parts );
-				
+
 				// Determine which script handles to localize based on context.
 				$script_handles = [];
 				if ( 'editor' === $context ) {
@@ -331,19 +441,19 @@ class BlockEditorRegistrationController extends Controller {
 					}
 
 					// Allow filtering of localized data for each block script.
-					$localized_data = apply_filters( 
-						"enqueues_block_editor_js_localized_data_blocks_{$block_slug}", 
-						[], 
-						$context, 
-						$script_handle 
+					$localized_data = apply_filters(
+						"enqueues_block_editor_js_localized_data_blocks_{$block_slug}",
+						[],
+						$context,
+						$script_handle,
 					);
 
 					if ( ! empty( $localized_data ) ) {
-						$localized_var_name = apply_filters( 
-							"enqueues_block_editor_js_localized_data_var_name_blocks_{$block_slug}", 
-							string_camelcaseify( "blockEditor blocks {$block_slug} Config" ), 
-							$context, 
-							$script_handle 
+						$localized_var_name = apply_filters(
+							"enqueues_block_editor_js_localized_data_var_name_blocks_{$block_slug}",
+							string_camelcaseify( "blockEditor blocks {$block_slug} Config" ),
+							$context,
+							$script_handle,
 						);
 
 						wp_localize_script( $script_handle, $localized_var_name, $localized_data );
@@ -446,7 +556,7 @@ class BlockEditorRegistrationController extends Controller {
 					? "{$block_editor_namespace}-{$foldername}-{$js_filetype}-script"
 					: "{$foldername}-{$js_filetype}";
 
-				$args = [ 
+				$args = [
 					'strategy'  => 'async',
 					'in_footer' => true,
 				];

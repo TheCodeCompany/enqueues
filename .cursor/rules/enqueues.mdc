@@ -1,0 +1,291 @@
+---
+alwaysApply: true
+---
+
+# Enqueues MU Plugin - Usage Guide
+
+## Overview
+
+The Enqueues system (`wp-content/mu-plugins/fujifilm/build-tools/vendor/thecodeco/enqueues/`) automates asset loading based on page type, template, and post type. It provides automatic fallback to default assets, extensive filter hooks for customisation, and **high-performance caching** to minimize filesystem operations.
+
+### Key Performance Features
+
+- **Intelligent Caching**: All asset lookups, block registry scans, and template discoveries are cached with automatic invalidation based on build signatures
+- **Build Signature Auto-Invalidation**: Cache keys include file modification times of main assets, so caches automatically bust on new deployments
+- **Request-Level Guards**: Block registration runs only once per request, preventing redundant filesystem operations
+- **Object Cache Compatible**: Uses WordPress transients which automatically leverage object cache (Redis/Memcached) when available
+
+## Initialisation
+
+Enqueues controllers are initialised in the theme enqueue controller:
+
+```php
+// Location: wp-content/mu-plugins/fujifilm/fujifilm-core/source/php/Controller/ThemeEnqueueController.php
+enqueues_initialize_controllers( 'theme' );
+```
+
+## Caching Configuration
+
+Caching is enabled by default and uses a 12-hour TTL. To configure:
+
+```php
+// Define in wp-config.php or bootstrap file
+define( 'ENQUEUES_CACHE_ENABLED', true );
+define( 'ENQUEUES_CACHE_TTL', 12 * HOUR_IN_SECONDS );
+```
+
+**Cache Flush Helper:**
+```php
+// Flush all Enqueues caches (useful after deployments)
+\Enqueues\flush_enqueues_cache();
+```
+
+## Theme Asset Loading
+
+The system automatically loads CSS/JS files based on:
+- Page type (front-page, archive, single, etc.)
+- Template name
+- Post type
+
+**File Structure:**
+- Source files: `wp-content/themes/fujifilm/source/js/`, `wp-content/themes/fujifilm/source/css/`
+- Built assets: `wp-content/themes/fujifilm/dist/js/`, `wp-content/themes/fujifilm/dist/css/`
+
+**Naming Convention:**
+- Main entry: `main.js` / `main.css` (configurable via `enqueues_theme_default_enqueue_asset_filename` filter)
+- Page-specific: `{page-type}.js` / `{page-type}.css` (e.g., `front-page.js`, `archive.js`)
+- Template-specific: `template-{template-name}.js` / `template-{template-name}.css`
+- Post type-specific: `single-{post-type}.js` / `single-{post-type}.css`
+
+**Performance Note:** All asset lookups are cached, including negative lookups (file not found), to avoid repeated filesystem operations.
+
+## Helper Functions
+
+### Find Asset File Path
+
+Cached function that finds the correct asset path (minified or standard) based on environment:
+
+```php
+$js_path = \Enqueues\asset_find_file_path( '/dist/js', 'filename', 'js', $directory );
+$css_path = \Enqueues\asset_find_file_path( '/source/css', 'filename', 'css', $directory );
+```
+
+**Returns:** Relative web-accessible path (e.g., `/dist/js/filename.min.js`) or empty string if not found.
+
+**Caching:** Results are cached with build signature, so lookups are only performed once per build.
+
+### Get Asset Page Type File Data
+
+Cached function that retrieves complete asset data including dependencies and version:
+
+```php
+$js_data = \Enqueues\get_asset_page_type_file_data(
+    $directory,
+    $directory_uri,
+    'js',           // directory_part
+    'filename',      // file_name
+    'main',          // fallback_file_name (optional)
+    'js',            // file_ext
+    "Missing filename JS file." // missing_local_warning
+);
+```
+
+**Returns:** Array with:
+- `handle` - Asset handle (sanitized filename)
+- `url` - Full asset URL
+- `file` - Full file path
+- `ver` - File modification time (version)
+- `minified` - Boolean indicating if file is minified
+- `asset_php` - Asset PHP data (dependencies, version) for JS files
+
+**Caching:** Results are cached with build signature, including negative results to avoid repeated lookups.
+
+## Filters for Customisation
+
+### Main Theme Asset Filters
+
+**JS Dependencies:**
+```php
+add_filter( 'enqueues_theme_js_dependencies_main', function( $dependencies ) {
+    $dependencies[] = 'wp-i18n';
+    return $dependencies;
+}, 10, 1 );
+```
+
+**JS Localized Data Variable Name:**
+```php
+add_filter( 'enqueues_theme_js_localized_data_var_name_main', function( $var_name ) {
+    if ( is_page( 'compare-cameras' ) ) {
+        $var_name = 'compare_i18n';
+    }
+    return $var_name;
+}, 10, 1 );
+```
+
+**JS Localized Data:**
+```php
+add_filter( 'enqueues_theme_js_localized_data_main', function( $localized_data ) {
+    if ( is_page( 'compare-cameras' ) ) {
+        $localised_specifications = new Specifications();
+        $localized_data = array_merge( $localized_data, $localised_specifications->localized() );
+    }
+    return $localized_data;
+}, 10, 1 );
+```
+
+**Default Asset Filename:**
+```php
+add_filter( 'enqueues_theme_default_enqueue_asset_filename', function( $filename ) {
+    // Change default from 'main' to something else
+    return 'custom-main';
+}, 10, 1 );
+```
+
+## Manual Asset Registration
+
+For assets not handled automatically by Enqueues, use standard WordPress functions with Enqueues helpers:
+
+```php
+$js_data = \Enqueues\get_asset_page_type_file_data(
+    $directory,
+    $directory_uri,
+    'js',
+    $filename,
+    null,
+    'js',
+    "Missing {$filename} JS file."
+);
+
+if ( $js_data ) {
+    $js_handle = $js_data['handle'];
+    $js_src    = $js_data['url'];
+    $asset_php = $js_data['asset_php'] ?? [];
+    $js_deps   = $asset_php['dependencies'] ?? [];
+    $js_ver    = $asset_php['version'] ?? $js_data['ver'];
+
+    wp_enqueue_script(
+        $js_handle,
+        $js_src,
+        $js_deps,
+        $js_ver,
+        [
+            'strategy'  => 'async',
+            'in_footer' => true,
+        ]
+    );
+}
+```
+
+**Performance Note:** `get_asset_page_type_file_data()` is cached, so calling it multiple times with the same parameters will use the cache.
+
+## Block Editor Assets
+
+### Block Registration
+
+Blocks are automatically registered from `dist/blocks/` directory. The system:
+- Scans blocks directory once per request (cached)
+- Checks if blocks are already registered before calling Core's registration function
+- Caches block metadata to avoid repeated glob operations
+- Automatically invalidates cache when build signature changes
+
+**Block Structure:**
+```
+dist/blocks/
+  └── block-name/
+      ├── block.json
+      ├── render.php (for dynamic blocks)
+      ├── style.css
+      ├── view.css
+      ├── editor.css
+      └── index.js
+```
+
+**Performance Optimizations:**
+- Block registry scan is cached with build signature
+- Blocks are only registered if not already in the registry
+- Request-level guard prevents multiple registrations per request
+
+### Block Editor Asset Helpers
+
+For block editor assets, use Enqueues helpers to find files:
+
+```php
+$js_editor_blocks_path  = \Enqueues\asset_find_file_path( '/dist/js', 'editor_blocks', 'js', $directory );
+$css_editor_blocks_path = \Enqueues\asset_find_file_path( '/dist/css', 'editor_blocks', 'css', $directory );
+$css_blocks_path        = \Enqueues\asset_find_file_path( '/dist/css', 'blocks', 'css', $directory );
+```
+
+### Block Registration Cache Management
+
+**Flush Block Cache:**
+```php
+// Flush block registry cache (useful after adding/removing blocks)
+do_action( 'enqueues_flush_block_cache' );
+```
+
+**Automatic Invalidation:**
+- Cache automatically invalidates on theme switch (`after_switch_theme` hook)
+- Cache automatically invalidates when build signature changes (new deployment)
+
+## External Libraries
+
+Register external libraries (CDNs) separately:
+
+```php
+wp_register_script(
+    'youtube-iframe-api',
+    'https://www.youtube.com/iframe_api',
+    [],
+    null, // External API doesn't need version
+    [
+        'strategy'  => 'defer',
+        'in_footer' => true,
+    ]
+);
+```
+
+## Performance Best Practices
+
+1. **Always use Enqueues helpers**: `asset_find_file_path()` and `get_asset_page_type_file_data()` are cached and optimized
+2. **Avoid direct filesystem calls**: Use Enqueues functions instead of `file_exists()`, `filemtime()`, etc.
+3. **Leverage caching**: Results are automatically cached, so repeated calls are fast
+4. **Respect build signatures**: Cache keys include build signatures, so caches auto-invalidate on deployments
+5. **Use filters for customisation**: Don't bypass the system; use filters to modify behavior
+
+## Core Web Vitals Optimizations
+
+The system includes built-in CLS (Cumulative Layout Shift) prevention for dynamic blocks:
+
+- Dynamic block styles are pre-enqueued early (priority 1 on `wp_enqueue_scripts`)
+- Styles print in `<head>` as cacheable `<link>` tags instead of late discovery
+- Block detection is optimized to batch `has_block()` calls
+
+**Note:** These optimizations are automatic and require no configuration.
+
+## Troubleshooting
+
+### Cache Not Working
+
+1. Check if caching is enabled: `defined( 'ENQUEUES_CACHE_ENABLED' ) && ENQUEUES_CACHE_ENABLED`
+2. Verify TTL is set: `defined( 'ENQUEUES_CACHE_TTL' )`
+3. Flush cache manually: `\Enqueues\flush_enqueues_cache()`
+
+### Blocks Not Registering
+
+1. Check block directory exists: `dist/blocks/`
+2. Verify `block.json` files exist in each block directory
+3. Check block namespace matches: Uses `enqueues_block_editor_namespace` filter
+4. Flush block cache: `do_action( 'enqueues_flush_block_cache' )`
+
+### Assets Not Loading
+
+1. Verify build process has run: Check `dist/` directory for built assets
+2. Check file naming matches page type/template
+3. Verify fallback to `main.js`/`main.css` works
+4. Check local dev warnings (only shown in local environment)
+
+## Additional Resources
+
+- Main README: `wp-content/mu-plugins/fujifilm/build-tools/vendor/thecodeco/enqueues/README.md`
+- Documentation: `wp-content/mu-plugins/fujifilm/build-tools/vendor/thecodeco/enqueues/docs/`
+- Source code: `wp-content/mu-plugins/fujifilm/build-tools/vendor/thecodeco/enqueues/src/`
