@@ -14,6 +14,92 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 /**
+ * Check if Enqueues debugging is enabled.
+ *
+ * @return bool True if debugging is enabled.
+ */
+function is_debug_enabled(): bool {
+	if ( ! defined( 'ENQUEUES_DEBUG' ) ) {
+		return false;
+	}
+	return (bool) ENQUEUES_DEBUG;
+}
+
+/**
+ * Get or generate a unique request ID for grouping log entries.
+ *
+ * @return string Request ID.
+ */
+function get_request_id(): string {
+	static $request_id = null;
+
+	if ( null === $request_id ) {
+		// Generate a short unique ID for this request (8 characters).
+		$request_id = substr( md5( uniqid( (string) microtime( true ), true ) ), 0, 8 );
+	}
+
+	return $request_id;
+}
+
+/**
+ * Get current page context for debugging.
+ *
+ * @return array Page context information.
+ */
+function get_page_context(): array {
+	$context = [
+		'request_id' => get_request_id(),
+	];
+
+	// Add URL if available (avoid calling too early in WordPress load).
+	if ( function_exists( 'home_url' ) && isset( $_SERVER['REQUEST_URI'] ) ) {
+		$context['url'] = home_url( $_SERVER['REQUEST_URI'] );
+	} elseif ( isset( $_SERVER['REQUEST_URI'] ) ) {
+		$context['uri'] = $_SERVER['REQUEST_URI'];
+	}
+
+	// Add page type if available.
+	if ( function_exists( 'get_page_type' ) ) {
+		$context['page_type'] = get_page_type();
+	}
+
+	return $context;
+}
+
+/**
+ * Log debug message for Enqueues system.
+ *
+ * Includes request ID and page context to help group log entries by request.
+ *
+ * @param string $message Debug message.
+ * @param array  $context Optional context data to include.
+ * @return void
+ */
+function debug_log( string $message, array $context = [] ): void {
+	if ( ! is_debug_enabled() ) {
+		return;
+	}
+
+	// Get page context (request ID, URL, etc.).
+	$page_context = get_page_context();
+
+	// Merge page context with provided context.
+	$full_context = array_merge( $page_context, $context );
+
+	$log_message = '[ENQUEUES] [' . $page_context['request_id'] . '] ' . $message;
+	if ( ! empty( $full_context ) ) {
+		// Remove request_id from context since it's already in the message prefix.
+		unset( $full_context['request_id'] );
+		if ( ! empty( $full_context ) ) {
+			$log_message .= ' | Context: ' . wp_json_encode( $full_context, JSON_PRETTY_PRINT );
+		}
+	}
+
+	// Use error_log with message type 0 (system logger) to ensure it goes to the configured error log.
+	error_log( $log_message, 0 );
+}
+
+/**
  * Determines whether caching is enabled for asset loading.
  *
  * Caching helps to improve performance by avoiding repetitive filesystem operations such as checking file existence.
@@ -22,6 +108,13 @@ if ( ! defined( 'ABSPATH' ) ) {
  * @return bool True if caching is enabled, false otherwise.
  */
 function is_cache_enabled(): bool {
+	static $result = null;
+	static $logged = false;
+
+	// Memoize result per request to avoid repeated filter calls.
+	if ( null !== $result ) {
+		return $result;
+	}
 
 	$cache_enabled = defined( 'ENQUEUES_CACHE_ENABLED' ) ? ENQUEUES_CACHE_ENABLED : true;
 
@@ -30,7 +123,16 @@ function is_cache_enabled(): bool {
 	 *
 	 * @param bool $is_cache_enabled True if caching is enabled, false otherwise.
 	 */
-	return (bool) apply_filters( 'enqueues_is_cache_enabled', $cache_enabled );
+	$result = (bool) apply_filters( 'enqueues_is_cache_enabled', $cache_enabled );
+
+	// Log once per request to verify debug logging is working.
+	if ( ! $logged && is_debug_enabled() ) {
+		error_log( '[ENQUEUES] Debug logging is ENABLED - Enqueues system is active' );
+		debug_log( 'is_cache_enabled() - Initialized', [ 'enabled' => $result, 'constant' => defined( 'ENQUEUES_CACHE_ENABLED' ) ? ENQUEUES_CACHE_ENABLED : 'not defined' ] );
+		$logged = true;
+	}
+
+	return $result;
 }
 
 /**
@@ -47,7 +149,11 @@ function get_cache_ttl(): int {
 	 *
 	 * @param int $cache_ttl The TTL in seconds. Defaults to 1 day (DAY_IN_SECONDS).
 	 */
-	return (int) apply_filters( 'enqueues_cache_ttl', defined( 'ENQUEUES_CACHE_TTL' ) ? ENQUEUES_CACHE_TTL : DAY_IN_SECONDS );
+	$ttl = (int) apply_filters( 'enqueues_cache_ttl', defined( 'ENQUEUES_CACHE_TTL' ) ? ENQUEUES_CACHE_TTL : DAY_IN_SECONDS );
+
+	debug_log( 'get_cache_ttl()', [ 'ttl_seconds' => $ttl, 'ttl_hours' => round( $ttl / 3600, 2 ) ] );
+
+	return $ttl;
 }
 
 /**
@@ -62,10 +168,22 @@ function get_cache_ttl(): int {
  * @return string Build signature hash.
  */
 function get_enqueues_build_signature(): string {
+	static $signature = null;
+	static $logged = false;
+
+	// Memoize per request to avoid repeated transient lookups.
+	if ( null !== $signature ) {
+		return $signature;
+	}
+
 	$cache_key = 'enqueues_build_signature';
 	$signature = is_cache_enabled() ? get_transient( $cache_key ) : false;
 
 	if ( false !== $signature ) {
+		if ( ! $logged && is_debug_enabled() ) {
+			debug_log( 'get_enqueues_build_signature()', [ 'source' => 'transient_cache', 'signature' => substr( $signature, 0, 8 ) . '...' ] );
+			$logged = true;
+		}
 		return $signature;
 	}
 
@@ -87,6 +205,18 @@ function get_enqueues_build_signature(): string {
 
 	// Create signature from both file modification times and main filename.
 	$signature = md5( "{$main_filename}:{$mtime_css}:{$mtime_js}" );
+
+	if ( is_debug_enabled() ) {
+		debug_log( 'get_enqueues_build_signature()', [
+			'source'        => 'generated',
+			'signature'     => substr( $signature, 0, 8 ) . '...',
+			'main_filename' => $main_filename,
+			'css_mtime'     => $mtime_css,
+			'js_mtime'      => $mtime_js,
+			'css_exists'    => file_exists( $main_css ),
+			'js_exists'     => file_exists( $main_js ),
+		] );
+	}
 
 	// Cache the signature for 1 hour (it will change when files are rebuilt).
 	if ( is_cache_enabled() ) {

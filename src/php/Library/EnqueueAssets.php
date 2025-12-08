@@ -16,6 +16,7 @@ use function Enqueues\get_page_type;
 use function Enqueues\is_cache_enabled;
 use function Enqueues\string_slugify;
 use function Enqueues\get_enqueues_build_signature;
+use function Enqueues\debug_log;
 
 /**
  * Class responsible for enqueuing the theme's main stylesheet and scripts based on page type, template, or post type.
@@ -272,8 +273,15 @@ class EnqueueAssets {
 		$cache_key       = 'enqueues_theme_template_files_' . $build_signature;
 		$template_files  = is_cache_enabled() ? get_transient( $cache_key ) : false;
 		if ( false !== $template_files ) {
+			debug_log( 'get_theme_template_files() - CACHE HIT', [
+				'template_count' => count( $template_files ),
+			] );
 			return $template_files;
 		}
+
+		debug_log( 'get_theme_template_files() - CACHE MISS - Scanning templates', [
+			'theme_directory' => $theme_directory,
+		] );
 
 		$template_files = [];
 
@@ -300,7 +308,7 @@ class EnqueueAssets {
 				 * @param array $directories The array of directories to skip being scanned for template files.
 				 */
 				$directories = apply_filters( 'enqueues_theme_skip_scan_directories', $directories );
-				
+
 				// Skip files in the specified directories.
 				foreach ( $directories as $dir ) {
 					if ( strpos( $file_path, $dir ) !== false ) {
@@ -322,6 +330,10 @@ class EnqueueAssets {
 		if ( is_cache_enabled() ) {
 			set_transient( $cache_key, $template_files, get_cache_ttl() );
 		}
+
+		debug_log( 'get_theme_template_files() - Scan complete, cached', [
+			'template_count' => count( $template_files ),
+		] );
 
 		return $template_files;
 	}
@@ -345,8 +357,15 @@ class EnqueueAssets {
 		$cache_key           = 'enqueues_asset_files_' . md5( wp_json_encode( $known_files ) . $build_signature );
 		$enqueue_asset_files = is_cache_enabled() ? get_transient( $cache_key ) : false;
 		if ( false !== $enqueue_asset_files ) {
+			debug_log( 'get_enqueue_asset_files() - CACHE HIT', [
+				'asset_count' => count( $enqueue_asset_files ),
+			] );
 			return $enqueue_asset_files;
 		}
+
+		debug_log( 'get_enqueue_asset_files() - CACHE MISS - Scanning assets', [
+			'known_files_count' => count( $known_files ),
+		] );
 
 		$enqueue_asset_files = [];
 
@@ -380,6 +399,10 @@ class EnqueueAssets {
 			set_transient( $cache_key, $enqueue_asset_files, get_cache_ttl() );
 		}
 
+		debug_log( 'get_enqueue_asset_files() - Scan complete, cached', [
+			'asset_count' => count( $enqueue_asset_files ),
+		] );
+
 		return $enqueue_asset_files;
 	}
 
@@ -391,7 +414,7 @@ class EnqueueAssets {
 	 * @return bool
 	 */
 	public function render_css_inline( $css_handle = '' ): bool {
-		
+
 		/**
 		 * Filter to render CSS inline.
 		 *

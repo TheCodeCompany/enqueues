@@ -12,6 +12,7 @@ namespace Enqueues;
 use function Enqueues\is_cache_enabled;
 use function Enqueues\get_cache_ttl;
 use function Enqueues\get_enqueues_build_signature;
+use function Enqueues\debug_log;
 
 /**
  * Finds the file path for an asset based on the environment.
@@ -46,6 +47,12 @@ function asset_find_file_path( string $relative_path, string $file_name, string 
 	if ( is_cache_enabled() ) {
 		$cached_path = get_transient( $cache_key );
 		if ( false !== $cached_path ) {
+			debug_log( 'asset_find_file_path() - CACHE HIT', [
+				'file_name'     => $file_name,
+				'file_ext'      => $file_ext,
+				'relative_path' => $relative_path,
+				'cached_path'   => $cached_path,
+			] );
 			return $cached_path;
 		}
 	}
@@ -69,6 +76,16 @@ function asset_find_file_path( string $relative_path, string $file_name, string 
 	if ( is_cache_enabled() ) {
 		set_transient( $cache_key, $file_path, get_cache_ttl() );
 	}
+
+	debug_log( 'asset_find_file_path() - CACHE MISS', [
+		'file_name'       => $file_name,
+		'file_ext'        => $file_ext,
+		'relative_path'   => $relative_path,
+		'found_path'      => $file_path,
+		'minified_exists' => file_exists( $minified ),
+		'standard_exists' => file_exists( $standard ),
+		'is_local'        => is_local(),
+	] );
 
 	return $file_path;
 }

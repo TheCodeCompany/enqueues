@@ -54,6 +54,7 @@ use function Enqueues\string_camelcaseify;
 use function Enqueues\is_cache_enabled;
 use function Enqueues\get_cache_ttl;
 use function Enqueues\get_enqueues_build_signature;
+use function Enqueues\debug_log;
 
 /**
  * Controller that integrates with the Block Editor (Gutenberg) to:
@@ -185,11 +186,25 @@ class BlockEditorRegistrationController extends Controller {
 
 		if ( false !== $cached_blocks && is_array( $cached_blocks ) ) {
 			// Use cached block metadata, but still register blocks with Core.
+			$dynamic_count = isset( $cached_blocks['dynamic'] ) ? count( $cached_blocks['dynamic'] ) : 0;
+			$static_count  = isset( $cached_blocks['static'] ) ? count( $cached_blocks['static'] ) : 0;
+
+			debug_log( 'register_blocks() - CACHE HIT', [
+				'blocks_root'    => $blocks_root,
+				'dynamic_blocks' => $dynamic_count,
+				'static_blocks'  => $static_count,
+				'total_blocks'   => $dynamic_count + $static_count,
+			] );
+
 			$this->blocks = $cached_blocks;
 			$this->register_blocks_from_cache( $blocks_root );
 			$registered = true;
 			return;
 		}
+
+		debug_log( 'register_blocks() - CACHE MISS - Scanning blocks', [
+			'blocks_root' => $blocks_root,
+		] );
 
 		// Cache miss: scan and register blocks.
 		$ns             = get_block_editor_namespace();
@@ -213,6 +228,11 @@ class BlockEditorRegistrationController extends Controller {
 
 			if ( ! $block_type ) {
 				// Block not registered yet - register it with Core.
+				debug_log( 'register_blocks() - Registering new block', [
+					'block_name'    => $full_name,
+					'metadata_file' => $metadata_file,
+				] );
+
 				$result = register_block_type_from_metadata( $metadata_file );
 
 				if ( ! $result ) {
@@ -227,6 +247,10 @@ class BlockEditorRegistrationController extends Controller {
 				if ( ! $block_type ) {
 					continue;
 				}
+			} else {
+				debug_log( 'register_blocks() - Block already registered, skipping', [
+					'block_name' => $full_name,
+				] );
 			}
 
 			$is_dynamic = ( isset( $block_type->render_callback ) && $block_type->render_callback ) || file_exists( "{$block_dir}/render.php" );
@@ -249,6 +273,15 @@ class BlockEditorRegistrationController extends Controller {
 			set_transient( $cache_key, $this->blocks, get_cache_ttl() );
 		}
 
+		$dynamic_count = isset( $this->blocks['dynamic'] ) ? count( $this->blocks['dynamic'] ) : 0;
+		$static_count  = isset( $this->blocks['static'] ) ? count( $this->blocks['static'] ) : 0;
+
+		debug_log( 'register_blocks() - Scan complete, cached', [
+			'dynamic_blocks' => $dynamic_count,
+			'static_blocks'  => $static_count,
+			'total_blocks'   => $dynamic_count + $static_count,
+		] );
+
 		$registered = true;
 	}
 
@@ -267,6 +300,9 @@ class BlockEditorRegistrationController extends Controller {
 		$ns             = get_block_editor_namespace();
 		$block_registry = WP_Block_Type_Registry::get_instance();
 
+		$registered_count = 0;
+		$skipped_count    = 0;
+
 		foreach ( array_filter( glob( "{$blocks_root}/*" ), 'is_dir' ) as $block_dir ) {
 			$block_name    = basename( $block_dir );
 			$metadata_file = "{$blocks_root}/{$block_name}/block.json";
@@ -279,12 +315,26 @@ class BlockEditorRegistrationController extends Controller {
 
 			// Skip registration if block is already registered (avoids expensive filesystem lookups).
 			if ( $block_registry->is_registered( $full_name ) ) {
+				$skipped_count++;
+				debug_log( 'register_blocks_from_cache() - Block already registered, skipping', [
+					'block_name' => $full_name,
+				] );
 				continue;
 			}
 
 			// Only register if not already in the registry.
+			debug_log( 'register_blocks_from_cache() - Registering block from cache', [
+				'block_name'    => $full_name,
+				'metadata_file' => $metadata_file,
+			] );
 			register_block_type_from_metadata( $metadata_file );
+			$registered_count++;
 		}
+
+		debug_log( 'register_blocks_from_cache() - Complete', [
+			'registered_count' => $registered_count,
+			'skipped_count'    => $skipped_count,
+		] );
 	}
 
 	/**
