@@ -102,6 +102,26 @@ function getCopyPluginConfigRenderPhpPattern(rootDir, distDir, srcDirPattern = '
 }
 
 /**
+ * Generates a CopyPlugin configuration for copying Gutenberg block asset files (e.g., icons).
+ *
+ * @param {string} rootDir       - The root directory path.
+ * @param {string} distDir       - The distribution directory path.
+ * @param {string} srcDirPattern - The file matching pattern to copy.
+ * @param {string} blockDir      - The directory containing the blocks within the block editor.
+ * @returns {Object} A CopyPlugin pattern configuration for Gutenberg block assets.
+ */
+function getCopyPluginConfigBlockAssetsPattern(rootDir, distDir, srcDirPattern = '**/src', blockDir = 'block-editor/blocks') {
+	return {
+		context: rootDir,
+		from: `${srcDirPattern}/${blockDir}/**/assets/**/*`,
+		to: (pathContext) => {
+			return pathContext.absoluteFilename.replace(`${rootDir}/src/`, `${distDir}/`);
+		},
+		noErrorOnMissing: true,
+	};
+}
+
+/**
  * Generates a CopyPlugin configuration pattern based on the provided context.
  *
  * @param {string} rootDir - The root directory path.
@@ -121,6 +141,8 @@ function enqueuesGetCopyPluginConfigPattern(rootDir, distDir, context, srcDirPat
 			return getCopyPluginConfigBlockJsonPattern(rootDir, distDir, srcDirPattern);
 		case 'render-php':
 			return getCopyPluginConfigRenderPhpPattern(rootDir, distDir, srcDirPattern);
+		case 'block-assets':
+			return getCopyPluginConfigBlockAssetsPattern(rootDir, distDir, srcDirPattern);
 		default:
 			throw new Error(`Unknown context: ${context}`);
 	}

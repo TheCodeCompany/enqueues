@@ -6,7 +6,7 @@ alwaysApply: true
 
 ## Overview
 
-The Enqueues system (`wp-content/mu-plugins/fujifilm/build-tools/vendor/thecodeco/enqueues/`) automates asset loading based on page type, template, and post type. It provides automatic fallback to default assets, extensive filter hooks for customisation, and **high-performance caching** to minimize filesystem operations.
+The Enqueues system (`wp-content/mu-plugins/**/build-tools/vendor/thecodeco/enqueues/`) automates asset loading based on page type, template, and post type. It provides automatic fallback to default assets, extensive filter hooks for customisation, and **high-performance caching** to minimize filesystem operations.
 
 ### Key Performance Features
 
