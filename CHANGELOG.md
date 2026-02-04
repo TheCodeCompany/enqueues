@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.4] - 2026-02-03
+
+### Added
+- **ENHANCEMENT**: Copy plugin patterns now accept custom source and destination block directories
+  - Added `srcBlockDir` and `distBlockDir` support for block JSON, render PHP, and block assets copying
+  - Added `assetsDir` support to allow copying any block directory, not just `assets`
+
+### Fixed
+- **BUGFIX**: Removed hard-coded `/src/` path replacement for block asset copying
+  - Block asset output now uses the matched source path and configured directories
+  - Prevents incorrect destinations when `srcDirPattern` is customised
+
 ## [1.3.3] - 2025-01-27
 
 ### Fixed

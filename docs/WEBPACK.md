@@ -198,11 +198,48 @@ const copyPlugin = new CopyWebpackPlugin({
     enqueuesGetCopyPluginConfigPattern(rootDir, distDir, 'fonts'),
     enqueuesGetCopyPluginConfigPattern(rootDir, distDir, 'block-json'),
     enqueuesGetCopyPluginConfigPattern(rootDir, distDir, 'render-php'),
+    enqueuesGetCopyPluginConfigPattern(rootDir, distDir, 'block-assets'),
   ],
 });
 ```
 
 This ensures block registration and server-side rendering work as expected.
+
+To customise block source and destination directories, pass `srcBlockDir` and `distBlockDir`. You can also copy a different block directory by setting `assetsDir`.
+
+```js
+const copyPlugin = new CopyWebpackPlugin({
+  patterns: [
+    enqueuesGetCopyPluginConfigPattern(
+      rootDir,
+      distDir,
+      'block-assets',
+      '**/source',
+      'blockeditor/main-blocks',
+      'icons',
+      'block-editor/blocks'
+    ),
+    enqueuesGetCopyPluginConfigPattern(
+      rootDir,
+      distDir,
+      'block-json',
+      '**/source',
+      'blockeditor/main-blocks',
+      undefined,
+      'block-editor/blocks'
+    ),
+    enqueuesGetCopyPluginConfigPattern(
+      rootDir,
+      distDir,
+      'render-php',
+      '**/source',
+      'blockeditor/main-blocks',
+      undefined,
+      'block-editor/blocks'
+    ),
+  ],
+});
+```
 
 ## CLEANING UP BUILD OUTPUT
 

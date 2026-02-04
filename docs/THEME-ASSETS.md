@@ -8,7 +8,7 @@ The Enqueues MU Plugin automatically loads CSS and JS files for each page type, 
 - If no specific file is found, it falls back to `main.js` and `main.css`.
 - This ensures every page always has the necessary assets, even if you haven’t created a specific file for that context.
 
-## Customizing Dependencies, Localization, and More
+## Customising Dependencies, Localisation, and More
 You can use filters to:
 - Add or change script/style dependencies
 - Localize data for your scripts
@@ -42,10 +42,10 @@ add_filter( 'enqueues_theme_js_localized_data_main', function( $data ) {
 
 # FILTERS FOR THEME ASSET LOADING
 
-Below are the most important filters you can use to customize theme asset loading. Each filter is named according to the asset handle (e.g., 'main', 'single-product', etc.).
+Below are the most important filters you can use to customise theme asset loading. Each filter is named according to the asset handle (e.g., 'main', 'single-product', etc.).
 
 ## CSS Filters
-- `enqueues_theme_css_handle_{handle}`: Customize the handle for the style.
+- `enqueues_theme_css_handle_{handle}`: Customise the handle for the style.
 - `enqueues_theme_css_register_style_{handle}`: Should the style be registered? Default: true.
 - `enqueues_theme_css_dependencies_{handle}`: Alter the style dependencies.
 - `enqueues_theme_css_version_{handle}`: Alter the style version.
@@ -60,14 +60,14 @@ add_filter( 'enqueues_theme_css_media_main', function( $media ) {
 ```
 
 ## JS Filters
-- `enqueues_theme_js_handle_{handle}`: Customize the handle for the script.
+- `enqueues_theme_js_handle_{handle}`: Customise the handle for the script.
 - `enqueues_theme_js_register_script_{handle}`: Should the script be registered? Default: true.
 - `enqueues_theme_js_dependencies_{handle}`: Alter the script dependencies. Default is from `.asset.php` if present.
 - `enqueues_theme_js_version_{handle}`: Alter the script version. Default is from `.asset.php` if present.
 - `enqueues_theme_js_args_{handle}`: Alter the script arguments (e.g., 'strategy', 'in_footer').
 - `enqueues_theme_js_enqueue_script_{handle}`: Should the script be enqueued? Default: true.
-- `enqueues_theme_js_localized_data_var_name_{handle}`: Customize the variable name for localized JS data.
-- `enqueues_theme_js_localized_data_{handle}`: Customize the data array for localized JS variables.
+- `enqueues_theme_js_localized_data_var_name_{handle}`: Customise the variable name for localised JS data.
+- `enqueues_theme_js_localized_data_{handle}`: Customise the data array for localised JS variables.
 
 ### Example: Add a Dependency
 ```php
@@ -87,7 +87,7 @@ add_filter( 'enqueues_theme_js_localized_data_main', function( $data ) {
 
 # MORE FILTERS & ADVANCED OPTIONS
 
-Below are additional filters for advanced customization and performance tuning.
+Below are additional filters for advanced customisation and performance tuning.
 
 ## Inline Rendering Filters
 - `enqueues_render_css_inline`: Should the CSS be rendered inline? Useful for critical CSS. Example:
