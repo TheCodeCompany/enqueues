@@ -149,7 +149,7 @@ add_filter( 'enqueues_cache_ttl', function() { return 3600; }); // 1 hour
 
 ### Performance Best Practices
 
-1. **Always use Enqueues helpers**: `asset_find_file_path()` and `get_asset_page_type_file_data()` are cached and optimized
+1. **Always use Enqueues helpers**: `asset_find_file_path()` and `get_asset_page_type_file_data()` are cached and optimised
 2. **Avoid direct filesystem calls**: Use Enqueues functions instead of `file_exists()`, `filemtime()`, etc.
 3. **Leverage caching**: Results are automatically cached, so repeated calls are fast
 4. **Respect build signatures**: Cache keys include build signatures, so caches auto-invalidate on deployments

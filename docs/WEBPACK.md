@@ -256,7 +256,7 @@ const cleanAfterEveryBuildPatterns = Object.values(blockeditorDirectories).flatM
 - **BrowserSync integration** (if present)
 - **DependencyExtractionWebpackPlugin** for WordPress dependencies
 - **JQuery auto-provisioning**
-- **Minification and optimization plugins**
+- **Minification and optimisation plugins**
 
 ## DISABLING/ENABLING FEATURES
 You can enable or disable specific Enqueues features/controllers using the `enqueues_load_controller` filter:

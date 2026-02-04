@@ -23,13 +23,13 @@ This page lists **all** filters and actions available in the Enqueues MU Plugin,
 | `enqueues_theme_js_args_{handle}`                     | Filter JS enqueue args (e.g. in_footer, strategy).             | [Theme JS Filters](THEME-ASSETS.md#filters-for-theme-asset-loading) |
 | `enqueues_theme_js_register_script_{handle}`          | Enable/disable JS script registration.                         | [Theme JS Filters](THEME-ASSETS.md#filters-for-theme-asset-loading) |
 | `enqueues_theme_js_enqueue_script_{handle}`           | Enable/disable JS script enqueue.                              | [Theme JS Filters](THEME-ASSETS.md#filters-for-theme-asset-loading) |
-| `enqueues_theme_js_localized_data_{handle}`           | Filter localized data for a JS asset.                          | [Theme JS Filters](THEME-ASSETS.md#filters-for-theme-asset-loading) |
-| `enqueues_theme_js_localized_data_var_name_{handle}`  | Filter the variable name for localized JS data.                | [Theme JS Filters](THEME-ASSETS.md#filters-for-theme-asset-loading) |
+| `enqueues_theme_js_localized_data_{handle}`           | Filter localised data for a JS asset.                          | [Theme JS Filters](THEME-ASSETS.md#filters-for-theme-asset-loading) |
+| `enqueues_theme_js_localized_data_var_name_{handle}`  | Filter the variable name for localised JS data.                | [Theme JS Filters](THEME-ASSETS.md#filters-for-theme-asset-loading) |
 | `enqueues_theme_default_enqueue_asset_filename`        | Filter the default fallback asset filename (e.g., 'main').     | [Theme Asset Fallback](THEME-ASSETS.md#how-fallback-works) |
-| `enqueues_theme_allowed_page_types_and_templates`      | Filter allowed page types/templates for asset loading.          | [Theme Asset Loading](THEME-ASSETS.md#customizing-dependencies-localization-and-more) |
-| `enqueues_theme_skip_scan_directories`                | Filter directories to skip when scanning for assets.           | [Theme Asset Loading](THEME-ASSETS.md#customizing-dependencies-localization-and-more) |
-| `enqueues_theme_css_src_dir`                          | Filter the source directory for theme CSS assets.              | [Theme Asset Loading](THEME-ASSETS.md#customizing-dependencies-localization-and-more) |
-| `enqueues_theme_js_src_dir`                           | Filter the source directory for theme JS assets.               | [Theme Asset Loading](THEME-ASSETS.md#customizing-dependencies-localization-and-more) |
+| `enqueues_theme_allowed_page_types_and_templates`      | Filter allowed page types/templates for asset loading.          | [Theme Asset Loading](THEME-ASSETS.md#customising-dependencies-localisation-and-more) |
+| `enqueues_theme_skip_scan_directories`                | Filter directories to skip when scanning for assets.           | [Theme Asset Loading](THEME-ASSETS.md#customising-dependencies-localisation-and-more) |
+| `enqueues_theme_css_src_dir`                          | Filter the source directory for theme CSS assets.              | [Theme Asset Loading](THEME-ASSETS.md#customising-dependencies-localisation-and-more) |
+| `enqueues_theme_js_src_dir`                           | Filter the source directory for theme JS assets.               | [Theme Asset Loading](THEME-ASSETS.md#customising-dependencies-localisation-and-more) |
 | `enqueues_render_css_inline`                          | Filter whether to render CSS inline (per handle).              | [Inline Asset Filters](INLINE-ASSETS.md#filters) |
 | `enqueues_render_js_inline`                           | Filter whether to render JS inline (per handle).               | [Inline Asset Filters](INLINE-ASSETS.md#filters) |
 
@@ -55,16 +55,16 @@ This page lists **all** filters and actions available in the Enqueues MU Plugin,
 ## Block Editor
 
 **Note**: Block editor filters are separated by asset type:
-- **Blocks**: Managed by WordPress Core via `block.json`. Only localization filters are available. Block registration is cached for performance.
+- **Blocks**: Managed by WordPress Core via `block.json`. Only localisation filters are available. Block registration is cached for performance.
 - **Plugins/Extensions**: Fully managed by Enqueues with complete filter control.
 - **All**: Apply to the entire block editor system.
 
-**Performance Note**: Block registration includes request-level guards and caching to minimize filesystem operations. See [Performance Optimizations](BLOCK-EDITOR.md#performance-optimizations) for details.
+**Performance Note**: Block registration includes request-level guards and caching to minimise filesystem operations. See [Performance Optimisations](BLOCK-EDITOR.md#performance-optimisations) for details.
 
 | Filter/Action                                         | Summary                                                        | Asset Type | Docs                                                        |
 |:------------------------------------------------------|:---------------------------------------------------------------|:-----------|:------------------------------------------------------------|
-| `enqueues_block_editor_js_localized_data_blocks_{block_slug}` | Filter localized data for block scripts.                   | **Blocks** | [Block Editor Filters](BLOCK-EDITOR.md#block-localization-filters) |
-| `enqueues_block_editor_js_localized_data_var_name_blocks_{block_slug}` | Filter variable name for block localized data.            | **Blocks** | [Block Editor Filters](BLOCK-EDITOR.md#block-localization-filters) |
+| `enqueues_block_editor_js_localized_data_blocks_{block_slug}` | Filter localised data for block scripts.                   | **Blocks** | [Block Editor Filters](BLOCK-EDITOR.md#block-localisation-filters) |
+| `enqueues_block_editor_js_localized_data_var_name_blocks_{block_slug}` | Filter variable name for block localised data.            | **Blocks** | [Block Editor Filters](BLOCK-EDITOR.md#block-localisation-filters) |
 | `enqueues_block_editor_register_style_{type}_{foldername}` | Enable/disable registration of plugin/extension CSS.       | **Plugins/Extensions** | [Block Editor Filters](BLOCK-EDITOR.md#plugin-and-extension-filters) |
 | `enqueues_block_editor_css_dependencies_{type}_{foldername}` | Filter dependencies for plugin/extension CSS.              | **Plugins/Extensions** | [Block Editor Filters](BLOCK-EDITOR.md#plugin-and-extension-filters) |
 | `enqueues_block_editor_css_version_{type}_{foldername}`  | Filter version for plugin/extension CSS.                      | **Plugins/Extensions** | [Block Editor Filters](BLOCK-EDITOR.md#plugin-and-extension-filters) |
@@ -74,15 +74,15 @@ This page lists **all** filters and actions available in the Enqueues MU Plugin,
 | `enqueues_block_editor_js_dependencies_{type}_{foldername}` | Filter dependencies for plugin/extension JS.               | **Plugins/Extensions** | [Block Editor Filters](BLOCK-EDITOR.md#plugin-and-extension-filters) |
 | `enqueues_block_editor_js_version_{type}_{foldername}`   | Filter version for plugin/extension JS.                       | **Plugins/Extensions** | [Block Editor Filters](BLOCK-EDITOR.md#plugin-and-extension-filters) |
 | `enqueues_block_editor_js_enqueue_script_{type}_{foldername}` | Enable/disable enqueue for plugin/extension JS.            | **Plugins/Extensions** | [Block Editor Filters](BLOCK-EDITOR.md#plugin-and-extension-filters) |
-| `enqueues_block_editor_js_localized_data_{type}_{foldername}` | Filter localized data for plugin/extension JS.             | **Plugins/Extensions** | [Block Editor Filters](BLOCK-EDITOR.md#plugin-and-extension-filters) |
-| `enqueues_block_editor_js_localized_data_var_name_{type}_{foldername}` | Filter variable name for plugin/extension localized data. | **Plugins/Extensions** | [Block Editor Filters](BLOCK-EDITOR.md#plugin-and-extension-filters) |
+| `enqueues_block_editor_js_localized_data_{type}_{foldername}` | Filter localised data for plugin/extension JS.             | **Plugins/Extensions** | [Block Editor Filters](BLOCK-EDITOR.md#plugin-and-extension-filters) |
+| `enqueues_block_editor_js_localized_data_var_name_{type}_{foldername}` | Filter variable name for plugin/extension localised data. | **Plugins/Extensions** | [Block Editor Filters](BLOCK-EDITOR.md#plugin-and-extension-filters) |
 | `enqueues_block_editor_namespace`                      | Filter the block editor namespace.                             | **All** | [Block Editor Filters](BLOCK-EDITOR.md#more-filters--advanced-options) |
 | `enqueues_block_editor_dist_dir`                       | Filter the block editor dist directory.                        | **All** | [Block Editor Filters](BLOCK-EDITOR.md#more-filters--advanced-options) |
 | `enqueues_block_editor_categories`                     | Filter block editor categories.                                | **All** | [Block Editor Filters](BLOCK-EDITOR.md#more-filters--advanced-options) |
 
 ---
 
-## JS Config/Localization
+## JS Config/Localisation
 
 | Filter/Action                      | Summary                                         | Docs                                         |
 |:-----------------------------------|:------------------------------------------------|:---------------------------------------------|
@@ -98,11 +98,14 @@ This page lists **all** filters and actions available in the Enqueues MU Plugin,
 | `enqueues_is_cache_enabled`        | Filter whether caching is enabled.               | [Caching](THEME-ASSETS.md#caching--performance) |
 | `enqueues_cache_ttl`               | Filter the cache time-to-live (TTL) in seconds.  | [Caching](THEME-ASSETS.md#caching--performance) |
 | `enqueues_cache_flushed`           | Action fired after cache flush completes.        | [Caching](THEME-ASSETS.md#caching--performance) |
-| `enqueues_flush_block_cache`       | Action to flush block registry cache.            | [Block Editor](BLOCK-EDITOR.md#performance-optimizations) |
+| `enqueues_flush_block_cache`       | Action to flush block registry cache.            | [Block Editor](BLOCK-EDITOR.md#performance-optimisations) |
 
 **Cache Helper Functions:**
 - `\Enqueues\flush_enqueues_cache()`: Flush all Enqueues-related caches
 - `\Enqueues\get_enqueues_build_signature()`: Get current build signature (internal)
+
+**Automatic Invalidation:**
+- Theme switches trigger cache invalidation via the `after_switch_theme` hook.
 
 ---
 
