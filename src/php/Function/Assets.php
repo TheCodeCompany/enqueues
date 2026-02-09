@@ -12,6 +12,7 @@ namespace Enqueues;
 use function Enqueues\is_cache_enabled;
 use function Enqueues\get_cache_ttl;
 use function Enqueues\get_enqueues_build_signature;
+use function Enqueues\get_block_editor_dist_dir;
 use function Enqueues\debug_log;
 
 /**
@@ -201,7 +202,6 @@ function get_asset_page_type_file_data(
 			'handle'   => sanitize_key( $file_name ),
 			'url'      => esc_url( "{$directory_uri}{$compiled_file_path}" ),
 			'file'     => esc_url( "{$directory}{$compiled_file_path}" ),
-			'ver'      => filemtime( "{$directory}{$compiled_file_path}" ),
 			'minified' => false !== strpos( $compiled_file_path, '.min.' ),
 		];
 
@@ -212,6 +212,13 @@ function get_asset_page_type_file_data(
 			$asset_php_filename = $minified ? "{$handle}.min.asset.php" : "{$handle}.asset.php";
 			$asset_php_path     = "{$directory}/dist/js/{$asset_php_filename}";
 			$data['asset_php']  = file_exists( $asset_php_path ) ? include $asset_php_path : [];
+			if ( isset( $data['asset_php']['version'] ) ) {
+				$data['ver'] = $data['asset_php']['version'];
+			}
+		}
+
+		if ( ! isset( $data['ver'] ) ) {
+			$data['ver'] = filemtime( "{$directory}{$compiled_file_path}" );
 		}
 
 		// Cache the result.
@@ -232,7 +239,6 @@ function get_asset_page_type_file_data(
 			'handle'   => sanitize_key( $fallback_file_name ),
 			'url'      => esc_url( "{$directory_uri}{$compiled_file_path}" ),
 			'file'     => esc_url( "{$directory}{$compiled_file_path}" ),
-			'ver'      => filemtime( "{$directory}{$compiled_file_path}" ),
 			'minified' => false !== strpos( $compiled_file_path, '.min.' ),
 		];
 
@@ -243,6 +249,98 @@ function get_asset_page_type_file_data(
 			$asset_php_filename = $minified ? "{$handle}.min.asset.php" : "{$handle}.asset.php";
 			$asset_php_path     = "{$directory}/dist/js/{$asset_php_filename}";
 			$data['asset_php']  = file_exists( $asset_php_path ) ? include $asset_php_path : [];
+			if ( isset( $data['asset_php']['version'] ) ) {
+				$data['ver'] = $data['asset_php']['version'];
+			}
+		}
+
+		if ( ! isset( $data['ver'] ) ) {
+			$data['ver'] = filemtime( "{$directory}{$compiled_file_path}" );
+		}
+
+		// Cache the result.
+		if ( is_cache_enabled() ) {
+			set_transient( $cache_key, $data, get_cache_ttl() );
+		}
+
+		return $data;
+	}
+
+	// Cache negative result to avoid repeated lookups.
+	if ( is_cache_enabled() ) {
+		set_transient( $cache_key, false, get_cache_ttl() );
+	}
+
+	return false;
+}
+
+/**
+ * Retrieves block editor asset file data for plugins and extensions.
+ *
+ * This function looks for compiled assets within the block editor dist directory
+ * and returns file data including version and dependency metadata when available.
+ *
+ * Caching Strategy:
+ * - Caches asset file data to avoid repeated file existence checks.
+ * - Cache key includes build signature to auto-invalidate on deployments.
+ *
+ * @param string $directory     Directory path where the asset is located.
+ * @param string $directory_uri URI of the directory for web access.
+ * @param string $asset_type    Asset type directory (plugins or extensions).
+ * @param string $foldername    Asset folder name within the type directory.
+ * @param string $file_name     File name without extension.
+ * @param string $file_ext      File extension ('css' or 'js').
+ *
+ * @return bool|array False if the asset is not found, or an associative array of asset data if found.
+ */
+function get_asset_block_editor_file_data(
+	string $directory,
+	string $directory_uri,
+	string $asset_type,
+	string $foldername,
+	string $file_name,
+	string $file_ext,
+): bool|array {
+
+	$block_editor_dist_dir = get_block_editor_dist_dir();
+
+	// Build cache key including build signature for auto-invalidation.
+	$build_signature = get_enqueues_build_signature();
+	$cache_key       = 'enqueues_block_editor_asset_data_' . md5( "{$directory}:{$block_editor_dist_dir}:{$asset_type}:{$foldername}:{$file_name}:{$file_ext}:{$build_signature}" );
+
+	// Check cache first.
+	if ( is_cache_enabled() ) {
+		$cached_data = get_transient( $cache_key );
+		if ( false !== $cached_data ) {
+			return $cached_data;
+		}
+	}
+
+	$compiled_file_path = asset_find_file_path(
+		"{$block_editor_dist_dir}/{$asset_type}/{$foldername}",
+		$file_name,
+		$file_ext,
+		$directory,
+	);
+
+	if ( ! empty( $compiled_file_path ) ) {
+		$data = [
+			'url'      => esc_url( "{$directory_uri}{$compiled_file_path}" ),
+			'file'     => esc_url( "{$directory}{$compiled_file_path}" ),
+			'minified' => false !== strpos( $compiled_file_path, '.min.' ),
+		];
+
+		// For JS assets, attempt to load the .asset.php file and add to the return array.
+		if ( 'js' === $file_ext ) {
+			$asset_php_path    = "{$directory}/" . ltrim( str_replace( '.js', '.asset.php', $compiled_file_path ), '/' );
+			$data['asset_php'] = file_exists( $asset_php_path ) ? include $asset_php_path : [];
+			if ( isset( $data['asset_php']['version'] ) ) {
+				$data['ver'] = $data['asset_php']['version'];
+			}
+		}
+
+		if ( ! isset( $data['ver'] ) ) {
+			$data['ver'] = filemtime( "{$directory}{$compiled_file_path}" );
 		}
 
 		// Cache the result.

@@ -43,7 +43,7 @@ namespace Enqueues\Controller;
 
 use WP_Block_Type_Registry;
 use Enqueues\Base\Main\Controller;
-use function Enqueues\asset_find_file_path;
+use function Enqueues\get_asset_block_editor_file_data;
 use function Enqueues\get_encoded_svg_icon;
 use function Enqueues\is_local;
 use function Enqueues\get_translation_domain;
@@ -129,6 +129,8 @@ class BlockEditorRegistrationController extends Controller {
 		// Hooks to register blocks, categories, and plugins.
 		add_action( 'init', [ $this, 'register_blocks' ] );
 		add_filter( 'block_categories_all', [ $this, 'block_categories' ], 10, 2 );
+		add_filter( 'block_type_metadata', [ $this, 'set_block_metadata_version' ], 99, 2 );
+		add_filter( 'block_type_metadata_settings', [ $this, 'set_block_asset_version' ], 99, 2 );
 
 		// Invalidate block cache on theme switch.
 		add_action( 'after_switch_theme', [ $this, 'flush_block_cache' ] );
@@ -397,6 +399,145 @@ class BlockEditorRegistrationController extends Controller {
 	}
 
 	/**
+	 * Set the block metadata version based on built asset versions.
+	 *
+	 * WordPress Core reads version data from block metadata when registering
+	 * block assets. We override it with the compiled asset versions so updates
+	 * to compiled assets are reflected without changing block.json.
+	 *
+	 * @param array  $metadata The block metadata parsed from block.json.
+	 * @param string $file The path to the block.json file.
+	 *
+	 * @return array The modified metadata.
+	 */
+	public function set_block_metadata_version( array $metadata, string $file = '' ): array {
+		if ( empty( $metadata['name'] ) ) {
+			return $metadata;
+		}
+
+		$namespace = get_block_editor_namespace();
+		if ( 0 !== strpos( $metadata['name'], "{$namespace}/" ) ) {
+			return $metadata;
+		}
+
+		$block_parts = explode( '/', $metadata['name'] );
+		$block_slug  = end( $block_parts );
+
+		$asset_version = $this->get_block_asset_version( $block_slug, $metadata );
+		if ( $asset_version ) {
+			$metadata['version'] = (string) $asset_version;
+		}
+
+		return $metadata;
+	}
+
+	/**
+	 * Set the block asset version based on built asset filetimes.
+	 *
+	 * WordPress Core uses the block.json version for cache busting. This causes
+	 * stale block CSS when the built assets change but block.json is not updated.
+	 * We instead use the most recent filemtime from the built block assets so
+	 * the frontend always reflects the latest compiled output.
+	 *
+	 * @param array $settings The block settings passed to registration.
+	 * @param array $metadata The block metadata parsed from block.json.
+	 *
+	 * @return array The modified settings.
+	 */
+	public function set_block_asset_version( array $settings, array $metadata ): array {
+		if ( empty( $metadata['name'] ) ) {
+			return $settings;
+		}
+
+		$namespace = get_block_editor_namespace();
+		if ( 0 !== strpos( $metadata['name'], "{$namespace}/" ) ) {
+			return $settings;
+		}
+
+		$block_parts = explode( '/', $metadata['name'] );
+		$block_slug  = end( $block_parts );
+
+		$asset_version = $this->get_block_asset_version( $block_slug, $metadata );
+		if ( $asset_version ) {
+			$settings['version'] = (string) $asset_version;
+		}
+
+		return $settings;
+	}
+
+	/**
+	 * Get the latest build filemtime for a block's compiled assets.
+	 *
+	 * @param string $block_slug The block folder name.
+	 * @param array  $metadata The block metadata parsed from block.json.
+	 *
+	 * @return string|int The latest version, or 0 if none found.
+	 */
+	private function get_block_asset_version( string $block_slug, array $metadata ): string|int {
+		$directory     = get_template_directory();
+		$directory_uri = get_template_directory_uri();
+
+		$asset_keys     = [ 'style', 'editorStyle', 'viewStyle', 'script', 'editorScript', 'viewScript' ];
+		$latest_version = 0;
+		$string_version = '';
+
+		foreach ( $asset_keys as $asset_key ) {
+			if ( empty( $metadata[ $asset_key ] ) ) {
+				continue;
+			}
+
+			$asset_value = $metadata[ $asset_key ];
+			$asset_items = is_array( $asset_value ) ? $asset_value : [ $asset_value ];
+
+			foreach ( $asset_items as $asset_item ) {
+				if ( ! is_string( $asset_item ) ) {
+					continue;
+				}
+
+				if ( 0 !== strpos( $asset_item, 'file:' ) ) {
+					continue;
+				}
+
+				$relative_file = ltrim( substr( $asset_item, 5 ), './' );
+				if ( '' === $relative_file ) {
+					continue;
+				}
+
+				$file_parts = pathinfo( $relative_file );
+				$file_name  = $file_parts['filename'] ?? '';
+				$file_ext   = $file_parts['extension'] ?? '';
+
+				if ( '' === $file_name || '' === $file_ext ) {
+					continue;
+				}
+
+				$asset_data = get_asset_block_editor_file_data(
+					$directory,
+					$directory_uri,
+					'blocks',
+					$block_slug,
+					$file_name,
+					$file_ext,
+				);
+
+				if ( $asset_data && isset( $asset_data['ver'] ) ) {
+					$asset_ver = $asset_data['ver'];
+					if ( is_numeric( $asset_ver ) ) {
+						$asset_ver = (int) $asset_ver;
+						if ( $asset_ver > $latest_version ) {
+							$latest_version = $asset_ver;
+						}
+					} elseif ( '' === $string_version ) {
+						$string_version = (string) $asset_ver;
+					}
+				}
+			}
+		}
+
+		return $string_version ? $string_version : $latest_version;
+	}
+
+	/**
 	 * Pre-enqueue dynamic block styles early to prevent CLS.
 	 * 
 	 * This is the core fix for the CLS issue. We detect which dynamic blocks are present
@@ -568,11 +709,11 @@ class BlockEditorRegistrationController extends Controller {
 
 			// Enqueue CSS bundle.
 			$css_filetype = $this->get_filename_from_context( $context, 'css' );
-			$css_path     = asset_find_file_path( "{$block_editor_dist_dir_path}/{$type}/{$foldername}", $css_filetype, 'css', $directory );
+			$css_data     = get_asset_block_editor_file_data( $directory, $directory_uri, $type, $foldername, $css_filetype, 'css' );
 
 			// Register CSS for all asset types including blocks.
 			// This allows dependency management while Core handles enqueueing for static blocks.
-			if ( $css_path ) {
+			if ( $css_data ) {
 
 				$handle = ( 'view' === $context )
 					? "{$block_editor_namespace}-{$foldername}-{$css_filetype}-style"
@@ -582,9 +723,9 @@ class BlockEditorRegistrationController extends Controller {
 
 				if ( $register_style && isset( $handle ) ) {
 					$css_deps = apply_filters( "enqueues_block_editor_css_dependencies_{$type}_{$foldername}", [], $context, $handle );
-					$css_ver  = apply_filters( "enqueues_block_editor_css_version_{$type}_{$foldername}", filemtime( "{$directory}{$css_path}" ), $context, $handle );
+					$css_ver  = apply_filters( "enqueues_block_editor_css_version_{$type}_{$foldername}", $css_data['ver'], $context, $handle );
 
-					wp_register_style( $handle, "{$directory_uri}{$css_path}", $css_deps, $css_ver );
+					wp_register_style( $handle, $css_data['url'], $css_deps, $css_ver );
 
 					// Only enqueue for non-block types or if explicitly requested for blocks.
 					// Static blocks are enqueued by Core, dynamic blocks are pre-enqueued separately.
@@ -598,9 +739,9 @@ class BlockEditorRegistrationController extends Controller {
 
 			// Enqueue JS bundle.
 			$js_filetype = $this->get_filename_from_context( $context, 'js' );
-			$js_path     = asset_find_file_path( "{$block_editor_dist_dir_path}/{$type}/{$foldername}", $js_filetype, 'js', $directory );
+			$js_data     = get_asset_block_editor_file_data( $directory, $directory_uri, $type, $foldername, $js_filetype, 'js' );
 
-			if ( $js_path ) {
+			if ( $js_data ) {
 
 				$handle = ( 'view' === $context )
 					? "{$block_editor_namespace}-{$foldername}-{$js_filetype}-script"
@@ -613,16 +754,15 @@ class BlockEditorRegistrationController extends Controller {
 
 				$args = apply_filters( "enqueues_block_editor_js_args_{$type}_{$foldername}", $args, $context, $handle );
 
-				$enqueue_asset_path = "{$directory}/" . ltrim( str_replace( '.js', '.asset.php', $js_path ), '/' );
-				$assets             = file_exists( $enqueue_asset_path ) ? include $enqueue_asset_path : [];
+				$assets = $js_data['asset_php'] ?? [];
 
 				$register_script = isset( $handle ) ? apply_filters( "enqueues_block_editor_js_register_script_{$type}_{$foldername}", true, $context, $handle ) : false;
 
 				if ( $register_script ) {
 					$js_deps = apply_filters( "enqueues_block_editor_js_dependencies_{$type}_{$foldername}", $assets['dependencies'] ?? [], $context, $handle );
-					$js_ver  = apply_filters( "enqueues_block_editor_js_version_{$type}_{$foldername}", $assets['version'] ?? filemtime( "{$directory}{$js_path}" ), $context, $handle );
+					$js_ver  = apply_filters( "enqueues_block_editor_js_version_{$type}_{$foldername}", $assets['version'] ?? $js_data['ver'], $context, $handle );
 
-					wp_register_script( $handle, "{$directory_uri}{$js_path}", $js_deps, $js_ver, $args );
+					wp_register_script( $handle, $js_data['url'], $js_deps, $js_ver, $args );
 
 					$should_enqueue_script = apply_filters( "enqueues_block_editor_js_enqueue_script_{$type}_{$foldername}", $enqueue_script, $context, $handle );
 
