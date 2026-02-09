@@ -116,7 +116,10 @@ function is_cache_enabled(): bool {
 		return $result;
 	}
 
-	$cache_enabled = defined( 'ENQUEUES_CACHE_ENABLED' ) ? ENQUEUES_CACHE_ENABLED : true;
+	// If the site is local, disable caching by default.
+	// The constant ENQUEUES_CACHE_ENABLED can be used to override this.
+	$cache_enabled = is_local() ? false : true;
+	$cache_enabled = defined( 'ENQUEUES_CACHE_ENABLED' ) ? ENQUEUES_CACHE_ENABLED : $cache_enabled;
 
 	/**
 	 * Filters whether caching is enabled in the Enqueues plugin.
@@ -177,14 +180,31 @@ function get_enqueues_build_signature(): string {
 	}
 
 	$cache_key = 'enqueues_build_signature';
-	$signature = is_cache_enabled() ? get_transient( $cache_key ) : false;
+	$cached    = is_cache_enabled() ? get_transient( $cache_key ) : false;
 
-	if ( false !== $signature ) {
-		if ( ! $logged && is_debug_enabled() ) {
-			debug_log( 'get_enqueues_build_signature()', [ 'source' => 'transient_cache', 'signature' => substr( $signature, 0, 8 ) . '...' ] );
-			$logged = true;
+	if ( false !== $cached && is_array( $cached ) ) {
+		$signature = $cached['signature'] ?? '';
+		$css_mtime = (int) ( $cached['css_mtime'] ?? 0 );
+		$js_mtime  = (int) ( $cached['js_mtime'] ?? 0 );
+		$filename  = (string) ( $cached['main_filename'] ?? '' );
+
+		// If the cached data still matches current mtimes, return it.
+		if ( $signature && $filename ) {
+			$directory = get_template_directory();
+			$main_css  = "{$directory}/dist/css/{$filename}.min.css";
+			$main_js   = "{$directory}/dist/js/{$filename}.min.js";
+
+			$current_css_mtime = file_exists( $main_css ) ? filemtime( $main_css ) : 0;
+			$current_js_mtime  = file_exists( $main_js ) ? filemtime( $main_js ) : 0;
+
+			if ( $current_css_mtime === $css_mtime && $current_js_mtime === $js_mtime ) {
+				if ( ! $logged && is_debug_enabled() ) {
+					debug_log( 'get_enqueues_build_signature()', [ 'source' => 'transient_cache', 'signature' => substr( $signature, 0, 8 ) . '...' ] );
+					$logged = true;
+				}
+				return $signature;
+			}
 		}
-		return $signature;
 	}
 
 	$directory = get_template_directory();
@@ -218,9 +238,19 @@ function get_enqueues_build_signature(): string {
 		] );
 	}
 
-	// Cache the signature for 1 hour (it will change when files are rebuilt).
+	// Cache the signature for 1 week.
+	// The signature will change when files are rebuilt durring build process or TTL expires.
 	if ( is_cache_enabled() ) {
-		set_transient( $cache_key, $signature, HOUR_IN_SECONDS );
+		set_transient(
+			$cache_key,
+			[
+				'signature'     => $signature,
+				'main_filename' => $main_filename,
+				'css_mtime'     => $mtime_css,
+				'js_mtime'      => $mtime_js,
+			],
+			WEEK_IN_SECONDS,
+		);
 	}
 
 	return $signature;

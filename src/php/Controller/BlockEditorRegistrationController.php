@@ -399,11 +399,11 @@ class BlockEditorRegistrationController extends Controller {
 	}
 
 	/**
-	 * Set the block metadata version based on built asset versions.
+	 * Set the block metadata version based on compiled asset versions.
 	 *
 	 * WordPress Core reads version data from block metadata when registering
-	 * block assets. We override it with the compiled asset versions so updates
-	 * to compiled assets are reflected without changing block.json.
+	 * block assets. We override it with compiled asset versions so updates
+	 * to built assets are reflected without changing block.json.
 	 *
 	 * @param array  $metadata The block metadata parsed from block.json.
 	 * @param string $file The path to the block.json file.
@@ -432,12 +432,11 @@ class BlockEditorRegistrationController extends Controller {
 	}
 
 	/**
-	 * Set the block asset version based on built asset filetimes.
+	 * Set the block asset version based on compiled asset versions.
 	 *
 	 * WordPress Core uses the block.json version for cache busting. This causes
-	 * stale block CSS when the built assets change but block.json is not updated.
-	 * We instead use the most recent filemtime from the built block assets so
-	 * the frontend always reflects the latest compiled output.
+	 * stale block CSS when built assets change but block.json is not updated.
+	 * We instead use compiled asset versions so the frontend reflects the latest output.
 	 *
 	 * @param array $settings The block settings passed to registration.
 	 * @param array $metadata The block metadata parsed from block.json.
@@ -466,20 +465,19 @@ class BlockEditorRegistrationController extends Controller {
 	}
 
 	/**
-	 * Get the latest build filemtime for a block's compiled assets.
+	 * Get a deterministic version hash for a block's compiled assets.
 	 *
 	 * @param string $block_slug The block folder name.
 	 * @param array  $metadata The block metadata parsed from block.json.
 	 *
-	 * @return string|int The latest version, or 0 if none found.
+	 * @return string|int The version hash, or 0 if none found.
 	 */
 	private function get_block_asset_version( string $block_slug, array $metadata ): string|int {
 		$directory     = get_template_directory();
 		$directory_uri = get_template_directory_uri();
 
 		$asset_keys     = [ 'style', 'editorStyle', 'viewStyle', 'script', 'editorScript', 'viewScript' ];
-		$latest_version = 0;
-		$string_version = '';
+		$version_parts  = [];
 
 		foreach ( $asset_keys as $asset_key ) {
 			if ( empty( $metadata[ $asset_key ] ) ) {
@@ -521,20 +519,16 @@ class BlockEditorRegistrationController extends Controller {
 				);
 
 				if ( $asset_data && isset( $asset_data['ver'] ) ) {
-					$asset_ver = $asset_data['ver'];
-					if ( is_numeric( $asset_ver ) ) {
-						$asset_ver = (int) $asset_ver;
-						if ( $asset_ver > $latest_version ) {
-							$latest_version = $asset_ver;
-						}
-					} elseif ( '' === $string_version ) {
-						$string_version = (string) $asset_ver;
-					}
+					$version_parts[] = "{$asset_key}:{$asset_item}:{$asset_data['ver']}";
 				}
 			}
 		}
 
-		return $string_version ? $string_version : $latest_version;
+		if ( empty( $version_parts ) ) {
+			return 0;
+		}
+
+		return md5( implode( '|', $version_parts ) );
 	}
 
 	/**

@@ -148,18 +148,6 @@ function get_asset_page_type_file_data(
 	string $missing_local_warning = 'Run the npm build for the asset files.',
 ): bool|array {
 
-	// Build cache key including build signature for auto-invalidation.
-	$build_signature = get_enqueues_build_signature();
-	$cache_key       = 'enqueues_asset_data_' . md5( "{$directory}:{$directory_part}:{$file_name}:{$fallback_file_name}:{$file_ext}:{$build_signature}" );
-
-	// Check cache first.
-	if ( is_cache_enabled() ) {
-		$cached_data = get_transient( $cache_key );
-		if ( false !== $cached_data ) {
-			return $cached_data;
-		}
-	}
-
 	/**
 	 * Filters the source directory used for locating SCSS/SASS/CSS and JS files.
 	 *
@@ -190,6 +178,7 @@ function get_asset_page_type_file_data(
 
 	$src_file_path      = "{$directory}/{$src_directory_part}/{$directory_part}/{$file_name}." . ( 'css' === $file_ext ? $css_ext : $js_ext );
 	$compiled_file_path = asset_find_file_path( "{$dist_directory_part}/{$directory_part}", $file_name, $file_ext, $directory );
+	$fallback_compiled_file_path = '';
 
 	$source_file_exists = file_exists( $src_file_path );
 
@@ -197,7 +186,28 @@ function get_asset_page_type_file_data(
 		display_maybe_missing_local_warning( '', $missing_local_warning );
 	}
 
+	if ( empty( $compiled_file_path ) && $fallback_file_name ) {
+		$fallback_compiled_file_path = asset_find_file_path( "{$dist_directory_part}/{$directory_part}", $fallback_file_name, $file_ext, $directory );
+	}
+
+	$effective_compiled_file_path = $compiled_file_path ? $compiled_file_path : $fallback_compiled_file_path;
+
+	// Build cache key including build signature for auto-invalidation.
+	$build_signature = get_enqueues_build_signature();
+	$cache_key       = 'enqueues_asset_data_' . md5( "{$directory}:{$directory_part}:{$file_name}:{$fallback_file_name}:{$file_ext}:{$effective_compiled_file_path}:{$build_signature}" );
+
+	// Check cache first.
+	if ( is_cache_enabled() ) {
+		$cached_data = get_transient( $cache_key );
+		if ( false !== $cached_data ) {
+			return $cached_data;
+		}
+	}
+
 	if ( ! empty( $compiled_file_path ) ) {
+		$full_file_path = "{$directory}{$compiled_file_path}";
+		$file_mtime     = file_exists( $full_file_path ) ? filemtime( $full_file_path ) : 0;
+
 		$data = [
 			'handle'   => sanitize_key( $file_name ),
 			'url'      => esc_url( "{$directory_uri}{$compiled_file_path}" ),
@@ -218,7 +228,7 @@ function get_asset_page_type_file_data(
 		}
 
 		if ( ! isset( $data['ver'] ) ) {
-			$data['ver'] = filemtime( "{$directory}{$compiled_file_path}" );
+			$data['ver'] = $file_mtime;
 		}
 
 		// Cache the result.
@@ -230,16 +240,16 @@ function get_asset_page_type_file_data(
 	}
 
 	// Fallback logic: attempt to load fallback file.
-	if ( empty( $compiled_file_path ) && $fallback_file_name ) {
-		$compiled_file_path = asset_find_file_path( "{$dist_directory_part}/{$directory_part}", $fallback_file_name, $file_ext, $directory );
-	}
+		if ( ! empty( $fallback_compiled_file_path ) ) {
+		$full_file_path = "{$directory}{$fallback_compiled_file_path}";
+		$file_mtime     = file_exists( $full_file_path ) ? filemtime( $full_file_path ) : 0;
+		$is_minified    = false !== strpos( $fallback_compiled_file_path, '.min.' );
 
-	if ( ! empty( $compiled_file_path ) ) {
 		$data = [
 			'handle'   => sanitize_key( $fallback_file_name ),
-			'url'      => esc_url( "{$directory_uri}{$compiled_file_path}" ),
-			'file'     => esc_url( "{$directory}{$compiled_file_path}" ),
-			'minified' => false !== strpos( $compiled_file_path, '.min.' ),
+			'url'      => esc_url( "{$directory_uri}{$fallback_compiled_file_path}" ),
+			'file'     => esc_url( "{$directory}{$fallback_compiled_file_path}" ),
+			'minified' => $is_minified,
 		];
 
 		// For JS assets, attempt to load the .asset.php file and add to the return array.
@@ -255,7 +265,7 @@ function get_asset_page_type_file_data(
 		}
 
 		if ( ! isset( $data['ver'] ) ) {
-			$data['ver'] = filemtime( "{$directory}{$compiled_file_path}" );
+			$data['ver'] = $file_mtime;
 		}
 
 		// Cache the result.
@@ -304,9 +314,16 @@ function get_asset_block_editor_file_data(
 
 	$block_editor_dist_dir = get_block_editor_dist_dir();
 
+	$compiled_file_path = asset_find_file_path(
+		"{$block_editor_dist_dir}/{$asset_type}/{$foldername}",
+		$file_name,
+		$file_ext,
+		$directory,
+	);
+
 	// Build cache key including build signature for auto-invalidation.
 	$build_signature = get_enqueues_build_signature();
-	$cache_key       = 'enqueues_block_editor_asset_data_' . md5( "{$directory}:{$block_editor_dist_dir}:{$asset_type}:{$foldername}:{$file_name}:{$file_ext}:{$build_signature}" );
+	$cache_key       = 'enqueues_block_editor_asset_data_' . md5( "{$directory}:{$block_editor_dist_dir}:{$asset_type}:{$foldername}:{$file_name}:{$file_ext}:{$compiled_file_path}:{$build_signature}" );
 
 	// Check cache first.
 	if ( is_cache_enabled() ) {
@@ -316,14 +333,10 @@ function get_asset_block_editor_file_data(
 		}
 	}
 
-	$compiled_file_path = asset_find_file_path(
-		"{$block_editor_dist_dir}/{$asset_type}/{$foldername}",
-		$file_name,
-		$file_ext,
-		$directory,
-	);
-
 	if ( ! empty( $compiled_file_path ) ) {
+		$full_file_path = "{$directory}{$compiled_file_path}";
+		$file_mtime     = file_exists( $full_file_path ) ? filemtime( $full_file_path ) : 0;
+
 		$data = [
 			'url'      => esc_url( "{$directory_uri}{$compiled_file_path}" ),
 			'file'     => esc_url( "{$directory}{$compiled_file_path}" ),
@@ -340,7 +353,7 @@ function get_asset_block_editor_file_data(
 		}
 
 		if ( ! isset( $data['ver'] ) ) {
-			$data['ver'] = filemtime( "{$directory}{$compiled_file_path}" );
+			$data['ver'] = $file_mtime;
 		}
 
 		// Cache the result.

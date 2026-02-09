@@ -117,10 +117,24 @@ The Enqueues system includes comprehensive caching to minimize filesystem operat
 - Negative lookups (file not found) are also cached to avoid repeated checks
 
 **Build Signature Auto-Invalidation:**
-- Cache keys include a build signature derived from main asset file modification times
+- Cache keys include a build signature derived from the main asset file modification times
+- On each request, the cached signature is validated against the current main asset mtimes
 - When assets are rebuilt (new deployment), the signature changes and caches automatically invalidate
 - No manual cache flushing required after deployments
 - Build signature respects the `enqueues_theme_default_enqueue_asset_filename` filter
+
+**Why the mtime check matters:**
+- The build signature is the invalidation source of truth for all cached asset lookups
+- Checking the main asset mtimes guarantees caches reflect the latest build output after deployment
+- This avoids stale versions without requiring manual cache flushes
+
+**Performance impact:**
+- Each request performs a minimal `file_exists()` + `filemtime()` check on the main CSS/JS only
+- The build signature is memoised per request, so every enqueue uses the same in-memory value
+- This avoids repeated option/transient lookups when many assets are enqueued on a page
+- If unchanged, asset lookups are served from cache without repeated filesystem work
+- If changed, caches rebuild once and then subsequent requests hit the cache again
+- Asset file details (path, URL, version, dependencies) are cached and reused across requests
 
 **Cache Configuration:**
 ```php
