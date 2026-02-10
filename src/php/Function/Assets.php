@@ -116,6 +116,18 @@ function display_maybe_missing_local_warning( string $path, string $message ): v
 }
 
 /**
+ * Generate a stable version hash for assets without an .asset.php file.
+ *
+ * @param int $file_mtime The file modification time.
+ * @param int $file_size  The file size in bytes.
+ *
+ * @return string The version hash.
+ */
+function get_asset_file_version_hash( int $file_mtime, int $file_size ): string {
+	return md5( "{$file_mtime}:{$file_size}" );
+}
+
+/**
  * Retrieves asset file data based on page type and environment conditions.
  *
  * This function checks for the existence of SASS and JS source files in the `src` directory
@@ -207,6 +219,7 @@ function get_asset_page_type_file_data(
 	if ( ! empty( $compiled_file_path ) ) {
 		$full_file_path = "{$directory}{$compiled_file_path}";
 		$file_mtime     = file_exists( $full_file_path ) ? filemtime( $full_file_path ) : 0;
+		$file_size      = file_exists( $full_file_path ) ? filesize( $full_file_path ) : 0;
 
 		$data = [
 			'handle'   => sanitize_key( $file_name ),
@@ -228,7 +241,7 @@ function get_asset_page_type_file_data(
 		}
 
 		if ( ! isset( $data['ver'] ) ) {
-			$data['ver'] = $file_mtime;
+			$data['ver'] = get_asset_file_version_hash( $file_mtime, $file_size );
 		}
 
 		// Cache the result.
@@ -243,6 +256,7 @@ function get_asset_page_type_file_data(
 		if ( ! empty( $fallback_compiled_file_path ) ) {
 		$full_file_path = "{$directory}{$fallback_compiled_file_path}";
 		$file_mtime     = file_exists( $full_file_path ) ? filemtime( $full_file_path ) : 0;
+		$file_size      = file_exists( $full_file_path ) ? filesize( $full_file_path ) : 0;
 		$is_minified    = false !== strpos( $fallback_compiled_file_path, '.min.' );
 
 		$data = [
@@ -265,7 +279,7 @@ function get_asset_page_type_file_data(
 		}
 
 		if ( ! isset( $data['ver'] ) ) {
-			$data['ver'] = $file_mtime;
+			$data['ver'] = get_asset_file_version_hash( $file_mtime, $file_size );
 		}
 
 		// Cache the result.
@@ -336,6 +350,7 @@ function get_asset_block_editor_file_data(
 	if ( ! empty( $compiled_file_path ) ) {
 		$full_file_path = "{$directory}{$compiled_file_path}";
 		$file_mtime     = file_exists( $full_file_path ) ? filemtime( $full_file_path ) : 0;
+		$file_size      = file_exists( $full_file_path ) ? filesize( $full_file_path ) : 0;
 
 		$data = [
 			'url'      => esc_url( "{$directory_uri}{$compiled_file_path}" ),
@@ -353,7 +368,7 @@ function get_asset_block_editor_file_data(
 		}
 
 		if ( ! isset( $data['ver'] ) ) {
-			$data['ver'] = $file_mtime;
+			$data['ver'] = get_asset_file_version_hash( $file_mtime, $file_size );
 		}
 
 		// Cache the result.
