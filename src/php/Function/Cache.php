@@ -116,10 +116,21 @@ function is_cache_enabled(): bool {
 		return $result;
 	}
 
+	// If the constant is set, respect it and skip further checks.
+	if ( defined( 'ENQUEUES_CACHE_ENABLED' ) ) {
+		$result = (bool) ENQUEUES_CACHE_ENABLED;
+
+		if ( ! $logged && is_debug_enabled() ) {
+			error_log( '[ENQUEUES] Debug logging is ENABLED - Enqueues system is active' );
+			debug_log( 'is_cache_enabled() - Initialized', [ 'enabled' => $result, 'constant' => ENQUEUES_CACHE_ENABLED ] );
+			$logged = true;
+		}
+
+		return $result;
+	}
+
 	// If the site is local, disable caching by default.
-	// The constant ENQUEUES_CACHE_ENABLED can be used to override this.
 	$cache_enabled = is_local() ? false : true;
-	$cache_enabled = defined( 'ENQUEUES_CACHE_ENABLED' ) ? ENQUEUES_CACHE_ENABLED : $cache_enabled;
 
 	/**
 	 * Filters whether caching is enabled in the Enqueues plugin.
@@ -131,7 +142,7 @@ function is_cache_enabled(): bool {
 	// Log once per request to verify debug logging is working.
 	if ( ! $logged && is_debug_enabled() ) {
 		error_log( '[ENQUEUES] Debug logging is ENABLED - Enqueues system is active' );
-		debug_log( 'is_cache_enabled() - Initialized', [ 'enabled' => $result, 'constant' => defined( 'ENQUEUES_CACHE_ENABLED' ) ? ENQUEUES_CACHE_ENABLED : 'not defined' ] );
+		debug_log( 'is_cache_enabled() - Initialized', [ 'enabled' => $result, 'constant' => 'not defined' ] );
 		$logged = true;
 	}
 
