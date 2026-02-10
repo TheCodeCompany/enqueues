@@ -8,7 +8,7 @@ The Enqueues MU Plugin automatically loads CSS and JS files for each page type, 
 - If no specific file is found, it falls back to `main.js` and `main.css`.
 - This ensures every page always has the necessary assets, even if you haven’t created a specific file for that context.
 
-## Customizing Dependencies, Localization, and More
+## Customising Dependencies, Localisation, and More
 You can use filters to:
 - Add or change script/style dependencies
 - Localize data for your scripts
@@ -42,10 +42,10 @@ add_filter( 'enqueues_theme_js_localized_data_main', function( $data ) {
 
 # FILTERS FOR THEME ASSET LOADING
 
-Below are the most important filters you can use to customize theme asset loading. Each filter is named according to the asset handle (e.g., 'main', 'single-product', etc.).
+Below are the most important filters you can use to customise theme asset loading. Each filter is named according to the asset handle (e.g., 'main', 'single-product', etc.).
 
 ## CSS Filters
-- `enqueues_theme_css_handle_{handle}`: Customize the handle for the style.
+- `enqueues_theme_css_handle_{handle}`: Customise the handle for the style.
 - `enqueues_theme_css_register_style_{handle}`: Should the style be registered? Default: true.
 - `enqueues_theme_css_dependencies_{handle}`: Alter the style dependencies.
 - `enqueues_theme_css_version_{handle}`: Alter the style version.
@@ -60,14 +60,14 @@ add_filter( 'enqueues_theme_css_media_main', function( $media ) {
 ```
 
 ## JS Filters
-- `enqueues_theme_js_handle_{handle}`: Customize the handle for the script.
+- `enqueues_theme_js_handle_{handle}`: Customise the handle for the script.
 - `enqueues_theme_js_register_script_{handle}`: Should the script be registered? Default: true.
 - `enqueues_theme_js_dependencies_{handle}`: Alter the script dependencies. Default is from `.asset.php` if present.
 - `enqueues_theme_js_version_{handle}`: Alter the script version. Default is from `.asset.php` if present.
 - `enqueues_theme_js_args_{handle}`: Alter the script arguments (e.g., 'strategy', 'in_footer').
 - `enqueues_theme_js_enqueue_script_{handle}`: Should the script be enqueued? Default: true.
-- `enqueues_theme_js_localized_data_var_name_{handle}`: Customize the variable name for localized JS data.
-- `enqueues_theme_js_localized_data_{handle}`: Customize the data array for localized JS variables.
+- `enqueues_theme_js_localized_data_var_name_{handle}`: Customise the variable name for localised JS data.
+- `enqueues_theme_js_localized_data_{handle}`: Customise the data array for localised JS variables.
 
 ### Example: Add a Dependency
 ```php
@@ -87,7 +87,7 @@ add_filter( 'enqueues_theme_js_localized_data_main', function( $data ) {
 
 # MORE FILTERS & ADVANCED OPTIONS
 
-Below are additional filters for advanced customization and performance tuning.
+Below are additional filters for advanced customisation and performance tuning.
 
 ## Inline Rendering Filters
 - `enqueues_render_css_inline`: Should the CSS be rendered inline? Useful for critical CSS. Example:
@@ -103,7 +103,55 @@ add_filter( 'enqueues_render_js_inline', function( $inline, $handle ) {
 }, 10, 2 );
 ```
 
-## Caching Filters
+## Caching & Performance
+
+The Enqueues system includes comprehensive caching to minimize filesystem operations and improve performance, especially on high-traffic multisite installations.
+
+### Caching Strategy
+
+**Automatic Caching:**
+- All asset lookups (`asset_find_file_path()`, `get_asset_page_type_file_data()`) are cached
+- Template file scans are cached
+- Asset file discovery is cached
+- Block registry scans are cached
+- Negative lookups (file not found) are also cached to avoid repeated checks
+
+**Build Signature Auto-Invalidation:**
+- Cache keys include a build signature derived from the main asset file modification times
+- On each request, the cached signature is validated against the current main asset mtimes
+- When assets are rebuilt (new deployment), the signature changes and caches automatically invalidate
+- No manual cache flushing required after deployments
+- Build signature respects the `enqueues_theme_default_enqueue_asset_filename` filter
+
+**Why the mtime check matters:**
+- The build signature is the invalidation source of truth for all cached asset lookups
+- Checking the main asset mtimes guarantees caches reflect the latest build output after deployment
+- This avoids stale versions without requiring manual cache flushes
+
+**Performance impact:**
+- Each request performs a minimal `file_exists()` + `filemtime()` check on the main CSS/JS only
+- The build signature is memoised per request, so every enqueue uses the same in-memory value
+- This avoids repeated option/transient lookups when many assets are enqueued on a page
+- If unchanged, asset lookups are served from cache without repeated filesystem work
+- If changed, caches rebuild once and then subsequent requests hit the cache again
+- Asset file details (path, URL, version, dependencies) are cached and reused across requests
+
+**Cache Configuration:**
+```php
+// Enable caching (default: true)
+define( 'ENQUEUES_CACHE_ENABLED', true );
+
+// Set cache TTL in seconds (default: 12 hours)
+define( 'ENQUEUES_CACHE_TTL', 12 * HOUR_IN_SECONDS );
+```
+
+**Manual Cache Flush:**
+```php
+// Flush all Enqueues caches
+\Enqueues\flush_enqueues_cache();
+```
+
+### Caching Filters
 - `enqueues_is_cache_enabled`: Enable/disable caching for asset lookups. Example:
 ```php
 add_filter( 'enqueues_is_cache_enabled', '__return_false' ); // Disable caching in dev
@@ -112,6 +160,14 @@ add_filter( 'enqueues_is_cache_enabled', '__return_false' ); // Disable caching 
 ```php
 add_filter( 'enqueues_cache_ttl', function() { return 3600; }); // 1 hour
 ```
+
+### Performance Best Practices
+
+1. **Always use Enqueues helpers**: `asset_find_file_path()` and `get_asset_page_type_file_data()` are cached and optimised
+2. **Avoid direct filesystem calls**: Use Enqueues functions instead of `file_exists()`, `filemtime()`, etc.
+3. **Leverage caching**: Results are automatically cached, so repeated calls are fast
+4. **Respect build signatures**: Cache keys include build signatures, so caches auto-invalidate on deployments
+5. **Use filters for customisation**: Don't bypass the system; use filters to modify behavior
 
 ## Directory & File Extension Filters
 - `enqueues_theme_allowed_page_types_and_templates`: Control which page types/templates are scanned for assets.

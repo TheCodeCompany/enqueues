@@ -11,7 +11,7 @@ This document compares the Enqueues webpack automation system with WordPress's o
 **Key Characteristics:**
 - Single `block.json` file as entry point
 - Automatic dependency extraction for `@wordpress/*` packages
-- Built-in webpack configuration optimized for blocks
+- Built-in webpack configuration optimised for blocks
 - Outputs to `build/` directory by default
 - Designed for individual block development
 
@@ -53,7 +53,7 @@ The Enqueues webpack automation provides advanced asset management with automati
 | Aspect | @wordpress/scripts | Enqueues Webpack |
 |--------|-------------------|------------------|
 | **Asset Loading** | Loads all registered assets | Conditional loading based on content analysis |
-| **Bundle Optimization** | WordPress optimized | Custom optimization with advanced features |
+| **Bundle Optimisation** | WordPress optimised | Custom optimisation with advanced features |
 | **Caching** | Standard webpack caching | Enhanced caching with Enqueues system |
 | **Inline Assets** | Manual implementation | Built-in inline asset support |
 
@@ -72,7 +72,7 @@ The Enqueues webpack automation provides advanced asset management with automati
 
 ### **Choose @wordpress/scripts When:**
 
-- **Simple Block Development**: Building individual blocks with minimal customization
+- **Simple Block Development**: Building individual blocks with minimal customisation
 - **WordPress Standards**: Preferring official WordPress tooling and conventions
 - **Small Teams**: Limited WordPress development experience
 - **Quick Prototyping**: Need to get blocks working quickly
@@ -93,8 +93,8 @@ The Enqueues webpack automation provides advanced asset management with automati
 ### **Choose Enqueues Webpack When:**
 
 - **Complex Theme Development**: Large themes with many blocks and page types
-- **Performance Critical**: Need optimized asset loading and conditional loading
-- **Advanced Features**: Require inline assets, caching, or custom optimization
+- **Performance Critical**: Need optimised asset loading and conditional loading
+- **Advanced Features**: Require inline assets, caching, or custom optimisation
 - **Scalability**: Building systems that need to scale with many blocks
 - **Integration**: Want seamless PHP/JavaScript asset management integration
 - **Custom Workflows**: Need advanced build automation and asset discovery
@@ -177,12 +177,12 @@ const entries = enqueuesMergeWebpackEntries(
 **@wordpress/scripts:**
 - Loads all registered assets on every page
 - No conditional loading
-- Standard webpack optimization
+- Standard webpack optimisation
 
 **Enqueues Webpack:**
 - Conditional loading based on content analysis
 - Inline critical assets
-- Advanced caching and optimization
+- Advanced caching and optimisation
 
 ### **Build Time**
 
@@ -201,7 +201,7 @@ const entries = enqueuesMergeWebpackEntries(
 - All assets loaded regardless of need
 
 **Enqueues Webpack:**
-- Optimized asset loading
+- Optimised asset loading
 - Reduced bundle sizes through conditional loading
 
 ---
@@ -217,14 +217,14 @@ const entries = enqueuesMergeWebpackEntries(
 
 **Cons:**
 - Limited to WordPress feature set
-- No custom optimizations
+- No custom optimisations
 - Dependent on WordPress release cycle
 
 ### **Enqueues Webpack Maintenance**
 
 **Pros:**
 - Full control over build process
-- Custom optimizations and features
+- Custom optimisations and features
 - Independent of WordPress release cycle
 
 **Cons:**
@@ -240,7 +240,7 @@ const entries = enqueuesMergeWebpackEntries(
 
 1. **Project Complexity**
    - How many blocks/plugins/extensions do you need?
-   - Is performance optimization critical?
+   - Is performance optimisation critical?
 
 2. **Team Expertise**
    - What's your team's WordPress development experience?
@@ -252,14 +252,14 @@ const entries = enqueuesMergeWebpackEntries(
 
 4. **Performance Requirements**
    - Is page load speed critical for your users?
-   - Do you need advanced caching and optimization?
+   - Do you need advanced caching and optimisation?
 
 ### **Scoring System:**
 
 Rate each factor from 1-5 (1 = @wordpress/scripts better, 5 = Enqueues better):
 
 - **Complexity**: How complex is your project?
-- **Performance**: How critical is performance optimization?
+- **Performance**: How critical is performance optimisation?
 - **Team Expertise**: How experienced is your team with custom tooling?
 - **Maintenance Resources**: Do you have resources to maintain custom systems?
 - **Scalability**: Do you need to scale to many blocks/features?

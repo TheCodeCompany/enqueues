@@ -1,7 +1,7 @@
 # Block Editor Features
 
 ## What Is Block Editor Integration?
-The Enqueues MU Plugin makes it easy to register custom blocks, block categories, and block editor plugins for the WordPress block editor (Gutenberg). You can control which scripts and styles are loaded in the editor, localize data, and more.
+The Enqueues MU Plugin makes it easy to register custom blocks, block categories, and block editor plugins for the WordPress block editor (Gutenberg). You can control which scripts and styles are loaded in the editor, localise data, and more.
 
 ## CLS (Cumulative Layout Shift) Fix for Dynamic Blocks
 
@@ -21,8 +21,8 @@ The Enqueues system implements a comprehensive fix:
 1. **Let Core own block registration**: Use `register_block_type_from_metadata()` so Core registers the correct handles from `block.json`
 2. **Detect dynamic blocks**: Identify blocks with `render.php` or `"render"` in `block.json` during registration
 3. **Pre-enqueue styles early**: On `wp_enqueue_scripts` (priority 1), check if dynamic blocks are present on the page and enqueue their styles
-4. **Core Web Vitals optimization**: Use filters to ensure styles load as `<link>` tags in `<head>`
-5. **Add localized parameters**: Use Core's registered handles to localize data for block scripts
+4. **Core Web Vitals optimisation**: Use filters to ensure styles load as `<link>` tags in `<head>`
+5. **Add localised parameters**: Use Core's registered handles to localise data for block scripts
 
 ### Benefits
 - ✅ **Eliminates CLS** from dynamic block styles
@@ -30,7 +30,7 @@ The Enqueues system implements a comprehensive fix:
 - ✅ **Works with custom handles**: Respects custom style handles defined in `block.json`
 - ✅ **Performance-friendly**: Only loads CSS for blocks present on the page
 - ✅ **Maintains existing functionality**: Plugin/extension asset handling unchanged
-- ✅ **Supports localized parameters**: Blocks can have localized data even without registering their own scripts
+- ✅ **Supports localised parameters**: Blocks can have localised data even without registering their own scripts
 
 ### Implementation Details
 The fix is implemented in `BlockEditorRegistrationController`:
@@ -42,7 +42,7 @@ The fix is implemented in `BlockEditorRegistrationController`:
   - `should_load_separate_core_block_assets = true`: Only load CSS for blocks on page
   - `wp_should_inline_block_styles = false`: Use `<link>` tags instead of inline `<style>`
   - `styles_inline_size_limit = 0`: Prevent any block styles from being inlined
-- **Localized parameters**: Uses Core's registered handles to add localized data to block scripts
+- **Localised parameters**: Uses Core's registered handles to add localised data to block scripts
 
 ### Order of Operations
 
@@ -55,12 +55,12 @@ The fix is implemented in `BlockEditorRegistrationController`:
 #### What We Do:
 1. **`init` (priority 10)**: Let Core register blocks, then extract handles from registry
 2. **`wp_enqueue_scripts` (priority 1)**: Pre-enqueue dynamic block styles for blocks present on page
-3. **`wp_enqueue_scripts` (priority 20)**: Add localized parameters to registered block scripts
-4. **`enqueue_block_editor_assets` (priority 20)**: Add localized parameters to editor scripts
+3. **`wp_enqueue_scripts` (priority 20)**: Add localised parameters to registered block scripts
+4. **`enqueue_block_editor_assets` (priority 20)**: Add localised parameters to editor scripts
 
 #### Why This Order Matters:
 - **Priority 1**: Ensures dynamic block styles load before any content rendering
-- **Priority 20**: Ensures localization happens after all scripts are registered
+- **Priority 20**: Ensures localisation happens after all scripts are registered
 - **Result**: Dynamic block CSS prints in `<head>` as `<link>` tags, preventing CLS
 
 ### Rollout Checklist
@@ -68,7 +68,7 @@ When implementing this fix:
 
 1. ✅ Remove/skip frontend registration of `blocks/*/(style|view).css`
 2. ✅ Ensure blocks are registered via `register_block_type_from_metadata()`
-3. ✅ Keep the Core Web Vitals optimization filters
+3. ✅ Keep the Core Web Vitals optimisation filters
 4. ✅ Purge page cache and CDN
 5. ✅ Test with DevTools "Disable cache" to verify block CSS loads in `<head>`
 
@@ -77,16 +77,50 @@ When implementing this fix:
 - You can add custom block categories or plugins using filters.
 - Block editor assets (JS/CSS) are loaded automatically based on naming conventions.
 
+## Performance Optimisations
+
+### Block Registration Caching
+
+The system includes several performance optimisations to minimise filesystem operations during block registration:
+
+**Cached Block Registry Scan:**
+- Block directory scan is cached with build signature for auto-invalidation
+- Block metadata (handles, dynamic flags) is cached to avoid repeated glob operations
+- Cache automatically invalidates when build signature changes (new deployment)
+
+**Request-Level Guards:**
+- Block registration runs only once per request (static flag prevents multiple executions)
+- Blocks are checked against the registry before calling `register_block_type_from_metadata()`
+- Skips expensive filesystem lookups if blocks are already registered
+
+**Optimized Dynamic Block Detection:**
+- `has_block()` calls are batched by concatenating post content once per query
+- Reduces the number of string searches when detecting which blocks are present on a page
+
+**Cache Management:**
+```php
+// Flush block registry cache (useful after adding/removing blocks)
+do_action( 'enqueues_flush_block_cache' );
+
+// Automatic invalidation on theme switch (after_switch_theme hook)
+// Cache automatically invalidates when build signature changes
+```
+
+**Performance Impact:**
+- Reduces filesystem operations from hundreds per request to a single cached lookup
+- Eliminates redundant calls to `register_block_type_from_metadata()` and its nested functions
+- Significantly improves performance on high-traffic multisite installations
+
 ## Using Filters for Block Assets
 
 ### Block Localization Filters
-Blocks can have localized data even if they don't register their own scripts, using the handles that WordPress Core registered from `block.json`:
+Blocks can have localised data even if they don't register their own scripts, using the handles that WordPress Core registered from `block.json`:
 
 #### `enqueues_block_editor_js_localized_data_blocks_{block_slug}`
-Filter the localized data for a block script.
+Filter the localised data for a block script.
 
 **Parameters:**
-- `$data` (array): The localized data array
+- `$data` (array): The localised data array
 - `$context` (string): 'frontend' or 'editor'
 - `$script_handle` (string): The exact handle WordPress Core registered
 
@@ -104,7 +138,7 @@ add_filter( 'enqueues_block_editor_js_localized_data_blocks_hero-block', functio
 ```
 
 #### `enqueues_block_editor_js_localized_data_var_name_blocks_{block_slug}`
-Filter the variable name for localized data.
+Filter the variable name for localised data.
 
 **Parameters:**
 - `$var_name` (string): The variable name
@@ -144,11 +178,11 @@ add_filter( 'enqueues_block_editor_js_localized_data_plugins_myplugin', function
 - Ensures compatibility with the block editor
 - Gives you fine-grained control over the editor experience
 - Eliminates CLS issues with dynamic blocks
-- Provides localized data support for all block types
+- Provides localised data support for all block types
 
 # FILTERS FOR BLOCK EDITOR INTEGRATION
 
-Below are the most important filters for customizing block editor asset loading and registration. Each filter is named according to the asset type and folder name (e.g., 'blocks_myblock', 'plugins_myplugin').
+Below are the most important filters for customising block editor asset loading and registration. Each filter is named according to the asset type and folder name (e.g., 'blocks_myblock', 'plugins_myplugin').
 
 **Note**: All filters include a `$context` parameter as the second parameter and a `$handle` parameter as the third parameter, allowing you to make context-aware decisions and access the exact handle WordPress Core will use.
 
@@ -178,15 +212,15 @@ The system ensures perfect alignment with WordPress Core's handle generation fro
 }
 ```
 
-## Block Localization Filters
+## Block Localisation Filters
 
-These filters allow you to add localized data to block scripts using the handles that WordPress Core registered from `block.json`:
+These filters allow you to add localised data to block scripts using the handles that WordPress Core registered from `block.json`:
 
 ### `enqueues_block_editor_js_localized_data_blocks_{block_slug}`
-Filter the localized data for a block script.
+Filter the localised data for a block script.
 
 **Parameters:**
-- `$data` (array): The localized data array (default: `[]`)
+- `$data` (array): The localised data array (default: `[]`)
 - `$context` (string): 'frontend' or 'editor'
 - `$script_handle` (string): The exact handle WordPress Core registered
 
@@ -201,7 +235,7 @@ add_filter( 'enqueues_block_editor_js_localized_data_blocks_hero-block', functio
 ```
 
 ### `enqueues_block_editor_js_localized_data_var_name_blocks_{block_slug}`
-Filter the variable name for localized data.
+Filter the variable name for localised data.
 
 **Parameters:**
 - `$var_name` (string): The variable name (default: camelCase of "blockEditor blocks {block_slug} Config")
@@ -231,8 +265,8 @@ These filters work for plugins and extensions (not blocks, since blocks are mana
 - `enqueues_block_editor_js_version_{type}_{foldername}`: Alter the script version. Default is from `.asset.php` if present.
 - `enqueues_block_editor_js_args_{type}_{foldername}`: Alter the script arguments (e.g., 'strategy', 'in_footer').
 - `enqueues_block_editor_js_enqueue_script_{type}_{foldername}`: Should the script be enqueued? Default: true for editor context, false for frontend context.
-- `enqueues_block_editor_js_localized_data_var_name_{type}_{foldername}`: Customize the variable name for localized JS data.
-- `enqueues_block_editor_js_localized_data_{type}_{foldername}`: Customize the data array for localized JS variables.
+- `enqueues_block_editor_js_localized_data_var_name_{type}_{foldername}`: Customise the variable name for localised JS data.
+- `enqueues_block_editor_js_localized_data_{type}_{foldername}`: Customise the data array for localised JS variables.
 
 **Note**: The filter name uses the folder name of the plugin/extension (e.g., `myplugin` for a folder named `myplugin`).
 
