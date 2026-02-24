@@ -1,12 +1,27 @@
 # Theme Asset Loading
 
 ## What Is Theme Asset Loading?
-The Enqueues MU Plugin automatically loads CSS and JS files for each page type, template, or custom post type in your WordPress theme. This means you can organize your assets by context, and the plugin will ensure the right files are loaded for each page.
+The Enqueues MU Plugin automatically loads CSS and JS files for each page type, template, or custom post type in your WordPress theme. This means you can organise your assets by context, and the plugin will ensure the right files are loaded for each page.
 
 ## How Fallback Works
-- The plugin first looks for a file matching the current page type, template, or post type (e.g., `single-product.js`).
-- If no specific file is found, it falls back to `main.js` and `main.css`.
-- This ensures every page always has the necessary assets, even if you haven’t created a specific file for that context.
+The plugin resolves the asset name in a strict order, stopping on the first match that exists as CSS or JS:
+
+1. **Template match** (pages and single templates).
+2. **Post name match for a post type** (single posts only).
+3. **Child post match for a post type** (single posts only).
+4. **Post type match** (single posts only).
+5. **Page type match** (front page, archive, search, etc).
+6. **Default fallback** to `main.js` and `main.css`.
+
+This ensures every page always has the necessary assets, even if you haven’t created a specific file for that context.
+
+When a post type remap exists, child and post type checks run remapped-first, then original.
+For example, if `camera` is remapped to `product`, Enqueues checks:
+
+1. `single-product-child`
+2. `single-camera-child`
+3. `single-product`
+4. `single-camera`
 
 ## Customizing Dependencies, Localization, and More
 You can use filters to:
@@ -30,6 +45,38 @@ add_filter( 'enqueues_theme_js_localized_data_main', function( $data ) {
     return $data;
 });
 ```
+
+## Asset Naming Patterns
+Use these patterns when creating assets:
+
+- **Template**: `template-{template-slug}.css` / `template-{template-slug}.js`
+- **Post name**: `single-{post-type}-{post-name}.css` / `single-{post-type}-{post-name}.js`
+- **Child post**: `single-{post-type}-child.css` / `single-{post-type}-child.js`
+- **Post type**: `single-{post-type}.css` / `single-{post-type}.js`
+- **Page type**: `{page-type}.css` / `{page-type}.js`
+- **Default**: `main.css` / `main.js`
+
+Post name and child post matches only apply to single posts.
+
+## Post Type Remapping
+Use `enqueues_theme_post_type_asset_remap` to remap post types for child/post-type matching.
+
+```php
+add_filter(
+	'enqueues_theme_post_type_asset_remap',
+	function( $remap, $post_type ) {
+		$remap['camera'] = 'product';
+		$remap['lens']   = 'product';
+		return $remap;
+	},
+	10,
+	2
+);
+```
+
+This filter does not change post name matching. It applies to:
+- `single-{post-type}-child`
+- `single-{post-type}`
 
 ## Common Pitfalls
 - **Filter Key Must Match the Asset Handle:** If the fallback to `main.js` is used, your filter should be for `main`, not the original page type or post type.
@@ -124,6 +171,7 @@ add_filter( 'enqueues_theme_skip_scan_directories', function( $dirs ) {
 ```
 - `enqueues_theme_css_src_dir`: Change the CSS source directory. Default: 'dist/css'.
 - `enqueues_theme_js_src_dir`: Change the JS source directory. Default: 'dist/js'.
+- `enqueues_theme_post_type_asset_remap`: Remap post types for child/post-type asset matching. Accepts an associative array, e.g. `[ 'camera' => 'product' ]`.
 - `enqueues_asset_theme_src_directory`: Change the source directory for SCSS/JS. Default: 'src'.
 - `enqueues_asset_theme_dist_directory`: Change the dist directory for compiled assets. Default: 'dist'.
 - `enqueues_asset_theme_js_extension`: Change the JS file extension. Default: 'js'.

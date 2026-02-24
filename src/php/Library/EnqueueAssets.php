@@ -11,6 +11,7 @@ namespace Enqueues\Library;
 
 use RecursiveIteratorIterator;
 use RecursiveDirectoryIterator;
+use function Enqueues\asset_find_file_path;
 use function Enqueues\get_cache_ttl;
 use function Enqueues\get_page_type;
 use function Enqueues\is_cache_enabled;
@@ -49,9 +50,10 @@ class EnqueueAssets {
 	 *
 	 * This function first checks if the current page type supports templates (e.g., 'page' or 'single').
 	 * If so, it attempts to use the slug of the current page template as the file name, provided
-	 * the template is in the list of allowed types or templates. If the current template is not allowed
-	 * or if the page type does not support templates, it checks if the page type itself is in the list
-	 * of allowed types. If neither condition is met, it defaults to using the main asset file name.
+	 * the template is in the list of allowed types or templates. For single posts, it then checks
+	 * for a post name match, a child post match, and a post type match, in that order. If none are
+	 * valid or available, it checks if the page type itself is in the list of allowed types. If
+	 * neither condition is met, it defaults to using the main asset file name.
 	 *
 	 * Caching Strategy:
 	 * - This method relies on the caching of allowed page types and templates to reduce repeated file lookups.
@@ -80,23 +82,33 @@ class EnqueueAssets {
 			}
 		}
 
+		// Post name support, if the file name is still the default and the page type is 'single'.
+		if ( 'single' === $page_type &&
+			$this->get_theme_default_enqueue_asset_filename() === $file_name ) {
+
+			$post_name_filename = $this->get_single_post_name_asset_name();
+			if ( $post_name_filename ) {
+				$file_name = $post_name_filename;
+			}
+		}
+
+		// Child post support, if the file name is still the default and the page type is 'single'.
+		if ( 'single' === $page_type &&
+			$this->get_theme_default_enqueue_asset_filename() === $file_name ) {
+
+			$child_post_filename = $this->get_child_post_type_asset_name();
+			if ( $child_post_filename ) {
+				$file_name = $child_post_filename;
+			}
+		}
+
 		// Post Type support, if the file name is still the default and the page type is 'single'.
 		if ( 'single' === $page_type &&
 			$this->get_theme_default_enqueue_asset_filename() === $file_name ) {
 
-			$post_type_slug     = get_post_type();
-			$post_type_filename = "single-{$post_type_slug}";
-
-			// Update the file name if the post type is in the allowed list.
-			if ( in_array( $post_type_filename, $allowed_page_types_and_templates, true ) ) {
+			$post_type_filename = $this->get_single_post_type_asset_name();
+			if ( $post_type_filename ) {
 				$file_name = $post_type_filename;
-			} elseif ( string_slugify( $post_type_filename ) !== $post_type_filename ) {
-
-				$post_type_filename = string_slugify( $post_type_filename );
-
-				if ( in_array( $post_type_filename, $allowed_page_types_and_templates, true ) ) {
-					$file_name = $post_type_filename;
-				}
 			}
 		}
 
@@ -107,6 +119,208 @@ class EnqueueAssets {
 		}
 
 		return $file_name;
+	}
+
+	/**
+	 * Get the post name asset filename for single posts.
+	 *
+	 * @return string|null The asset name if it exists.
+	 */
+	protected function get_single_post_name_asset_name(): ?string {
+		if ( 'single' !== get_page_type() ) {
+			return null;
+		}
+
+		$post = get_post();
+
+		if ( ! is_a( $post, 'WP_Post' ) ) {
+			return null;
+		}
+
+		if ( '' === $post->post_name ) {
+			return null;
+		}
+
+		$post_type = $post->post_type;
+
+		if ( ! is_string( $post_type ) || '' === $post_type ) {
+			return null;
+		}
+
+		$asset_name = "single-{$post_type}-{$post->post_name}";
+		$matched    = $this->get_existing_asset_name( $asset_name );
+
+		if ( $matched ) {
+			return $matched;
+		}
+
+		$slugified = string_slugify( $asset_name );
+		if ( $slugified !== $asset_name ) {
+			return $this->get_existing_asset_name( $slugified );
+		}
+
+		return null;
+	}
+
+	/**
+	 * Get the child post type asset filename for single posts.
+	 *
+	 * @return string|null The asset name if it exists.
+	 */
+	protected function get_child_post_type_asset_name(): ?string {
+		if ( false === $this->is_child_single() ) {
+			return null;
+		}
+
+		$post_type = get_post_type();
+
+		if ( ! is_string( $post_type ) || '' === $post_type ) {
+			return null;
+		}
+
+		$post_type_candidates = $this->get_post_type_asset_candidates( $post_type );
+		foreach ( $post_type_candidates as $post_type_candidate ) {
+			$asset_name = "single-{$post_type_candidate}-child";
+			$matched    = $this->get_existing_asset_name( $asset_name );
+
+			if ( $matched ) {
+				return $matched;
+			}
+
+			$slugified = string_slugify( $asset_name );
+			if ( $slugified !== $asset_name ) {
+				$slugified_match = $this->get_existing_asset_name( $slugified );
+				if ( $slugified_match ) {
+					return $slugified_match;
+				}
+			}
+		}
+
+		return null;
+	}
+
+	/**
+	 * Get the post type asset filename for single posts.
+	 *
+	 * @return string|null The asset name if it exists.
+	 */
+	protected function get_single_post_type_asset_name(): ?string {
+		if ( 'single' !== get_page_type() ) {
+			return null;
+		}
+
+		$post_type = get_post_type();
+
+		if ( ! is_string( $post_type ) || '' === $post_type ) {
+			return null;
+		}
+
+		$post_type_candidates = $this->get_post_type_asset_candidates( $post_type );
+		foreach ( $post_type_candidates as $post_type_candidate ) {
+			$asset_name = "single-{$post_type_candidate}";
+			$matched    = $this->get_existing_asset_name( $asset_name );
+
+			if ( $matched ) {
+				return $matched;
+			}
+
+			$slugified = string_slugify( $asset_name );
+			if ( $slugified !== $asset_name ) {
+				$slugified_match = $this->get_existing_asset_name( $slugified );
+				if ( $slugified_match ) {
+					return $slugified_match;
+				}
+			}
+		}
+
+		return null;
+	}
+
+	/**
+	 * Get post type candidates for asset matching.
+	 *
+	 * Remapped post types are checked first, followed by the original post type.
+	 *
+	 * @param string $post_type The current post type.
+	 *
+	 * @return array Ordered list of post types to check.
+	 */
+	protected function get_post_type_asset_candidates( string $post_type ): array {
+		/**
+		 * Filter post type remapping for theme asset matching.
+		 *
+		 * @param array  $post_type_remap The post type remapping array.
+		 * @param string $post_type       The current post type.
+		 */
+		$post_type_remap = apply_filters( 'enqueues_theme_post_type_asset_remap', [], $post_type );
+		$candidates      = [];
+
+		if ( is_array( $post_type_remap ) &&
+			isset( $post_type_remap[ $post_type ] ) &&
+			is_string( $post_type_remap[ $post_type ] ) &&
+			'' !== $post_type_remap[ $post_type ] ) {
+			$candidates[] = $post_type_remap[ $post_type ];
+		}
+
+		$candidates[] = $post_type;
+
+		return array_values( array_unique( $candidates ) );
+	}
+
+	/**
+	 * Check whether the current request is a child CPT single page.
+	 *
+	 * @return bool
+	 */
+	protected function is_child_single(): bool {
+		if ( false === is_singular() ) {
+			return false;
+		}
+
+		$post = get_post();
+
+		if ( ! is_a( $post, 'WP_Post' ) ) {
+			return false;
+		}
+
+		$post_type_object = get_post_type_object( $post->post_type );
+
+		if ( ! $post_type_object ) {
+			return false;
+		}
+
+		// Limit this behaviour to hierarchical custom post types.
+		if ( true === (bool) $post_type_object->_builtin || false === (bool) $post_type_object->hierarchical ) {
+			return false;
+		}
+
+		return 0 !== (int) $post->post_parent;
+	}
+
+	/**
+	 * Check whether the asset exists for the configured CSS or JS directories.
+	 *
+	 * @param string $asset_name The asset name to check.
+	 *
+	 * @return string|null The asset name if it exists.
+	 */
+	protected function get_existing_asset_name( string $asset_name ): ?string {
+		if ( '' === $asset_name ) {
+			return null;
+		}
+
+		$theme_directory = get_template_directory();
+		$css_dir         = '/' . ltrim( apply_filters( 'enqueues_theme_css_src_dir', 'dist/css' ), '/' );
+		$js_dir          = '/' . ltrim( apply_filters( 'enqueues_theme_js_src_dir', 'dist/js' ), '/' );
+
+		$css_path = asset_find_file_path( $css_dir, $asset_name, 'css', $theme_directory );
+		$js_path  = asset_find_file_path( $js_dir, $asset_name, 'js', $theme_directory );
+
+		if ( '' === $css_path && '' === $js_path ) {
+			return null;
+		}
+
+		return $asset_name;
 	}
 
 	/**

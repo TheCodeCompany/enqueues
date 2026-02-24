@@ -30,6 +30,7 @@ This page lists **all** filters and actions available in the Enqueues MU Plugin,
 | `enqueues_theme_skip_scan_directories`                | Filter directories to skip when scanning for assets.           | [Theme Asset Loading](THEME-ASSETS.md#customizing-dependencies-localization-and-more) |
 | `enqueues_theme_css_src_dir`                          | Filter the source directory for theme CSS assets.              | [Theme Asset Loading](THEME-ASSETS.md#customizing-dependencies-localization-and-more) |
 | `enqueues_theme_js_src_dir`                           | Filter the source directory for theme JS assets.               | [Theme Asset Loading](THEME-ASSETS.md#customizing-dependencies-localization-and-more) |
+| `enqueues_theme_post_type_asset_remap`                | Remap post types for child/post-type asset lookup precedence.  | [Theme Asset Loading](THEME-ASSETS.md#post-type-remapping) |
 | `enqueues_render_css_inline`                          | Filter whether to render CSS inline (per handle).              | [Inline Asset Filters](INLINE-ASSETS.md#filters) |
 | `enqueues_render_js_inline`                           | Filter whether to render JS inline (per handle).               | [Inline Asset Filters](INLINE-ASSETS.md#filters) |
 
