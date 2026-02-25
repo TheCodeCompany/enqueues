@@ -11,9 +11,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **ENHANCEMENT**: Extended early block style pre-enqueue coverage for CLS prevention
   - Renamed pre-enqueue logic to handle both static and dynamic blocks found in page content
   - Early enqueue now covers frontend block style and view style handles for all matched blocks
-- **ENHANCEMENT**: Added guard behaviour when sites override Core block style-loading defaults
-  - Added `enqueues_block_editor_preenqueue_block_styles` filter to control head pre-enqueue behaviour
-  - Pre-enqueue defaults now follow Enqueues Core Web Vitals defaults and can be overridden per site
+- **ENHANCEMENT**: Added explicit control for head pre-enqueue behaviour
+  - Added `enqueues_block_editor_preenqueue_block_styles` filter to control forced head pre-enqueue
+  - Pre-enqueue defaults to enabled for static and dynamic blocks, and can be disabled per site to fall back to WordPress behaviour
 - **ENHANCEMENT**: Extended post-type remap support to post-name asset matching
   - `enqueues_theme_post_type_asset_remap` now applies to `single-{post-type}-{post-name}` lookups
   - Default lookup order now checks original post type first, then remapped post type
@@ -22,7 +22,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Documentation
 - Updated `BLOCK-EDITOR.md` with:
   - Core block style-loading defaults used by Enqueues
-  - Priority-based override guidance for site-level projects
   - New `enqueues_block_editor_preenqueue_block_styles` filter details
 - Updated `FILTERS.md` to include `enqueues_block_editor_preenqueue_block_styles`
 - Updated `THEME-ASSETS.md` and `FILTERS.md` to document remap behaviour for post-name matching and candidate ordering

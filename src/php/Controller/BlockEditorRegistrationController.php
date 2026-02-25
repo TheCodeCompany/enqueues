@@ -121,7 +121,6 @@ class BlockEditorRegistrationController extends Controller {
 		 * Use priority larger than 10 within your projects to override these filters.
 		 */
 		add_filter( 'should_load_separate_core_block_assets', '__return_true' );
-		add_filter( 'should_load_block_assets_on_demand', '__return_false' );
 		add_filter( 'wp_should_inline_block_styles', '__return_false' );
 		add_filter( 'styles_inline_size_limit', '__return_zero' );
 
@@ -432,7 +431,12 @@ class BlockEditorRegistrationController extends Controller {
 			return;
 		}
 
-		if ( ! $this->should_preenqueue_block_styles() ) {
+		/**
+		 * Filter whether Enqueues should pre-enqueue block styles in the head.
+		 *
+		 * @param bool $should_preenqueue Default behaviour. True to force pre-enqueue.
+		 */
+		if ( ! (bool) apply_filters( 'enqueues_block_editor_preenqueue_block_styles', true ) ) {
 			return;
 		}
 
@@ -475,50 +479,6 @@ class BlockEditorRegistrationController extends Controller {
 			}
 			$maybe_enqueue( $blob );
 		}
-	}
-
-	/**
-	 * Determine whether block styles should be pre-enqueued in the head.
-	 *
-	 * By default, pre-enqueueing runs only when the Enqueues Core Web Vitals defaults
-	 * are still active:
-	 * - should_load_separate_core_block_assets = true
-	 * - should_load_block_assets_on_demand = false
-	 * - wp_should_inline_block_styles = false
-	 *
-	 * If a site overrides those defaults, pre-enqueueing is disabled unless re-enabled
-	 * via the `enqueues_block_editor_preenqueue_block_styles` filter.
-	 *
-	 * @return bool
-	 */
-	private function should_preenqueue_block_styles(): bool {
-		$load_separate_block_assets = (bool) apply_filters( 'should_load_separate_core_block_assets', false );
-		$load_on_demand             = function_exists( 'wp_should_load_block_assets_on_demand' )
-			? (bool) wp_should_load_block_assets_on_demand()
-			: (bool) apply_filters( 'should_load_block_assets_on_demand', true );
-		$inline_block_styles        = (bool) apply_filters( 'wp_should_inline_block_styles', true );
-
-		$using_enqueues_defaults = true === $load_separate_block_assets
-			&& false === $load_on_demand
-			&& false === $inline_block_styles;
-
-		/**
-		 * Filter whether Enqueues should pre-enqueue block styles in the head.
-		 *
-		 * @param bool  $should_preenqueue      Default behaviour. True when Enqueues Core Web Vitals defaults are active.
-		 * @param bool  $using_enqueues_defaults Whether current Core block style settings match Enqueues defaults.
-		 * @param array $settings               Current resolved Core style settings.
-		 */
-		return (bool) apply_filters(
-			'enqueues_block_editor_preenqueue_block_styles',
-			$using_enqueues_defaults,
-			$using_enqueues_defaults,
-			[
-				'should_load_separate_core_block_assets' => $load_separate_block_assets,
-				'should_load_block_assets_on_demand'     => $load_on_demand,
-				'wp_should_inline_block_styles'          => $inline_block_styles,
-			]
-		);
 	}
 
 	/**

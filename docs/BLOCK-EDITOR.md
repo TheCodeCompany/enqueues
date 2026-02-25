@@ -38,7 +38,6 @@ The fix is implemented in `BlockEditorRegistrationController`:
 - **Early pre-enqueue**: Uses `wp_enqueue_scripts` priority 1 to enqueue styles in `<head>`
 - **Core Web Vitals filters**: 
   - `should_load_separate_core_block_assets = true`: Only load CSS for blocks on page
-  - `should_load_block_assets_on_demand = false`: Disable on-demand loading to prefer head styles
   - `wp_should_inline_block_styles = false`: Use `<link>` tags instead of inline `<style>`
   - `styles_inline_size_limit = 0`: Prevent any block styles from being inlined
 - **Localized parameters**: Uses Core's registered handles to add localized data to block scripts
@@ -259,17 +258,13 @@ add_filter( 'enqueues_block_editor_namespace', function() { return 'mytheme'; })
 - Core style-loading defaults are set in `BlockEditorRegistrationController` at priority 10:
 ```php
 add_filter( 'should_load_separate_core_block_assets', '__return_true' );
-add_filter( 'should_load_block_assets_on_demand', '__return_false' );
 add_filter( 'wp_should_inline_block_styles', '__return_false' );
 add_filter( 'styles_inline_size_limit', '__return_zero' );
 ```
-- Site-level overrides should use a higher priority (e.g. `20`):
+- `enqueues_block_editor_preenqueue_block_styles`: Control whether Enqueues pre-enqueues block styles in the head. Default: `true`.
 ```php
-add_filter( 'should_load_block_assets_on_demand', '__return_true', 20 );
-```
-- `enqueues_block_editor_preenqueue_block_styles`: Control whether Enqueues pre-enqueues block styles in the head. Defaults to enabled only when Enqueues style-loading defaults remain active.
-```php
-add_filter( 'enqueues_block_editor_preenqueue_block_styles', '__return_true' );
+// Disable forced head pre-enqueue and fall back to WordPress behaviour.
+add_filter( 'enqueues_block_editor_preenqueue_block_styles', '__return_false' );
 ```
 - `enqueues_block_editor_use_block_json_version`: Control block version source. Default: `false` (use compiled asset versions).
 ```php
