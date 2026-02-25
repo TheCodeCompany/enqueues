@@ -57,7 +57,7 @@ use function Enqueues\string_camelcaseify;
  * - Register blocks and categories.
  * - Track block handles for dependency management.
  * - Prime vendor dependencies via shim handles.
- * - Pre-enqueue dynamic block styles early to prevent CLS.
+ * - Pre-enqueue block styles early to prevent CLS.
  * - Add localized parameters to registered block scripts.
  */
 class BlockEditorRegistrationController extends Controller {
@@ -91,7 +91,7 @@ class BlockEditorRegistrationController extends Controller {
 	 *
 	 * @var array{dynamic: array<string, array>, static: array<string, array>}
 	 */
-	protected $blocks = [ 
+	protected $blocks = [
 		'dynamic' => [],
 		'static'  => [],
 	];
@@ -117,8 +117,11 @@ class BlockEditorRegistrationController extends Controller {
 		 * 
 		 * These filters ensure our pre-enqueued styles appear in <head> as cacheable <link> tags,
 		 * preventing CLS and improving performance.
+		 * 
+		 * Use priority larger than 10 within your projects to override these filters.
 		 */
 		add_filter( 'should_load_separate_core_block_assets', '__return_true' );
+		add_filter( 'should_load_block_assets_on_demand', '__return_false' );
 		add_filter( 'wp_should_inline_block_styles', '__return_false' );
 		add_filter( 'styles_inline_size_limit', '__return_zero' );
 
@@ -128,8 +131,8 @@ class BlockEditorRegistrationController extends Controller {
 		add_action( 'init', [ $this, 'register_blocks' ] );
 		add_filter( 'block_categories_all', [ $this, 'block_categories' ], 10, 2 );
 
-		// Pre-enqueue dynamic block styles so they print in <head>.
-		add_action( 'wp_enqueue_scripts', [ $this, 'preenqueue_dynamic_block_styles' ], 1 );
+		// Pre-enqueue block styles so they print in <head>.
+		add_action( 'wp_enqueue_scripts', [ $this, 'preenqueue_block_styles' ], 1 );
 
 		// Add localized parameters to registered block scripts.
 		add_action( 'wp_enqueue_scripts', [ $this, 'localize_block_scripts' ], 20 );
@@ -300,7 +303,7 @@ class BlockEditorRegistrationController extends Controller {
 				static function ( $item ) {
 					return is_string( $item ) ? trim( $item ) : $item;
 				},
-				$filter_value
+				$filter_value,
 			);
 
 			return in_array( '*', $values, true )
@@ -362,7 +365,7 @@ class BlockEditorRegistrationController extends Controller {
 
 			$is_dynamic = ( isset( $block_type->render_callback ) && $block_type->render_callback ) || file_exists( "{$block_dir}/render.php" );
 
-			$handles = [ 
+			$handles = [
 				'style_handles'         => isset( $block_type->style_handles ) ? (array) $block_type->style_handles : [],
 				'view_style_handles'    => isset( $block_type->view_style_handles ) ? (array) $block_type->view_style_handles : [],
 				'editor_style_handles'  => isset( $block_type->editor_style_handles ) ? (array) $block_type->editor_style_handles : [],
@@ -413,19 +416,23 @@ class BlockEditorRegistrationController extends Controller {
 	}
 
 	/**
-	 * Pre-enqueue dynamic block styles early to prevent CLS.
+	 * Pre-enqueue block styles early to prevent CLS.
 	 * 
-	 * This is the core fix for the CLS issue. We detect which dynamic blocks are present
+	 * This is the core fix for the CLS issue. We detect which blocks are present
 	 * on the current page and enqueue their styles early (priority 1) so they print in <head>
 	 * instead of being discovered late during content rendering.
 	 * 
-	 * Without this, dynamic block styles would be discovered during render and output
+	 * Without this, block styles can be discovered during render and output
 	 * via print_late_styles() near the footer, causing visible content shifts.
 	 *
 	 * @return void
 	 */
-	public function preenqueue_dynamic_block_styles(): void {
-		if ( is_admin() || empty( $this->blocks['dynamic'] ) ) {
+	public function preenqueue_block_styles(): void {
+		if ( is_admin() || ( empty( $this->blocks['dynamic'] ) && empty( $this->blocks['static'] ) ) ) {
+			return;
+		}
+
+		if ( ! $this->should_preenqueue_block_styles() ) {
 			return;
 		}
 
@@ -433,14 +440,16 @@ class BlockEditorRegistrationController extends Controller {
 			if ( ! is_string( $content ) || '' === $content ) {
 				return;
 			}
-			foreach ( $this->blocks['dynamic'] as $block_name => $handles ) {
-				if ( has_block( $block_name, $content ) ) {
-					// Enqueue all frontend style handles (style + viewStyle) so CSS prints in <head>.
-					$style_handles      = isset( $handles['style_handles'] ) ? (array) $handles['style_handles'] : [];
-					$view_style_handles = isset( $handles['view_style_handles'] ) ? (array) $handles['view_style_handles'] : [];
-					foreach ( array_merge( $style_handles, $view_style_handles ) as $style_handle ) {
-						if ( is_string( $style_handle ) && '' !== $style_handle ) {
-							wp_enqueue_style( $style_handle );
+			foreach ( [ 'dynamic', 'static' ] as $block_type ) {
+				foreach ( $this->blocks[ $block_type ] as $block_name => $handles ) {
+					if ( has_block( $block_name, $content ) ) {
+						// Enqueue all frontend style handles (style + viewStyle) so CSS prints in <head>.
+						$style_handles      = isset( $handles['style_handles'] ) ? (array) $handles['style_handles'] : [];
+						$view_style_handles = isset( $handles['view_style_handles'] ) ? (array) $handles['view_style_handles'] : [];
+						foreach ( array_merge( $style_handles, $view_style_handles ) as $style_handle ) {
+							if ( is_string( $style_handle ) && '' !== $style_handle ) {
+								wp_enqueue_style( $style_handle );
+							}
 						}
 					}
 				}
@@ -461,11 +470,55 @@ class BlockEditorRegistrationController extends Controller {
 			$blob = '';
 			foreach ( $wp_query->posts as $p ) {
 				if ( isset( $p->post_content ) && is_string( $p->post_content ) ) {
-					$blob .= $p->post_content . "\n";
+					$blob .= "{$p->post_content}\n";
 				}
 			}
 			$maybe_enqueue( $blob );
 		}
+	}
+
+	/**
+	 * Determine whether block styles should be pre-enqueued in the head.
+	 *
+	 * By default, pre-enqueueing runs only when the Enqueues Core Web Vitals defaults
+	 * are still active:
+	 * - should_load_separate_core_block_assets = true
+	 * - should_load_block_assets_on_demand = false
+	 * - wp_should_inline_block_styles = false
+	 *
+	 * If a site overrides those defaults, pre-enqueueing is disabled unless re-enabled
+	 * via the `enqueues_block_editor_preenqueue_block_styles` filter.
+	 *
+	 * @return bool
+	 */
+	private function should_preenqueue_block_styles(): bool {
+		$load_separate_block_assets = (bool) apply_filters( 'should_load_separate_core_block_assets', false );
+		$load_on_demand             = function_exists( 'wp_should_load_block_assets_on_demand' )
+			? (bool) wp_should_load_block_assets_on_demand()
+			: (bool) apply_filters( 'should_load_block_assets_on_demand', true );
+		$inline_block_styles        = (bool) apply_filters( 'wp_should_inline_block_styles', true );
+
+		$using_enqueues_defaults = true === $load_separate_block_assets
+			&& false === $load_on_demand
+			&& false === $inline_block_styles;
+
+		/**
+		 * Filter whether Enqueues should pre-enqueue block styles in the head.
+		 *
+		 * @param bool  $should_preenqueue      Default behaviour. True when Enqueues Core Web Vitals defaults are active.
+		 * @param bool  $using_enqueues_defaults Whether current Core block style settings match Enqueues defaults.
+		 * @param array $settings               Current resolved Core style settings.
+		 */
+		return (bool) apply_filters(
+			'enqueues_block_editor_preenqueue_block_styles',
+			$using_enqueues_defaults,
+			$using_enqueues_defaults,
+			[
+				'should_load_separate_core_block_assets' => $load_separate_block_assets,
+				'should_load_block_assets_on_demand'     => $load_on_demand,
+				'wp_should_inline_block_styles'          => $inline_block_styles,
+			]
+		);
 	}
 
 	/**
@@ -478,13 +531,13 @@ class BlockEditorRegistrationController extends Controller {
 	 */
 	public function localize_block_scripts(): void {
 		$context = is_admin() ? 'editor' : 'frontend';
-		
+
 		// Process both static and dynamic blocks for localization.
 		foreach ( [ 'static', 'dynamic' ] as $block_type ) {
 			foreach ( $this->blocks[ $block_type ] as $block_name => $handles ) {
 				$block_parts = explode( '/', $block_name );
 				$block_slug  = end( $block_parts );
-				
+
 				// Determine which script handles to localize based on context.
 				$script_handles = [];
 				if ( 'editor' === $context ) {
@@ -505,19 +558,19 @@ class BlockEditorRegistrationController extends Controller {
 					}
 
 					// Allow filtering of localized data for each block script.
-					$localized_data = apply_filters( 
-						"enqueues_block_editor_js_localized_data_blocks_{$block_slug}", 
-						[], 
-						$context, 
-						$script_handle 
+					$localized_data = apply_filters(
+						"enqueues_block_editor_js_localized_data_blocks_{$block_slug}",
+						[],
+						$context,
+						$script_handle,
 					);
 
 					if ( ! empty( $localized_data ) ) {
-						$localized_var_name = apply_filters( 
-							"enqueues_block_editor_js_localized_data_var_name_blocks_{$block_slug}", 
-							string_camelcaseify( "blockEditor blocks {$block_slug} Config" ), 
-							$context, 
-							$script_handle 
+						$localized_var_name = apply_filters(
+							"enqueues_block_editor_js_localized_data_var_name_blocks_{$block_slug}",
+							string_camelcaseify( "blockEditor blocks {$block_slug} Config" ),
+							$context,
+							$script_handle,
 						);
 
 						wp_localize_script( $script_handle, $localized_var_name, $localized_data );
@@ -563,7 +616,7 @@ class BlockEditorRegistrationController extends Controller {
 	 * - Confusion about which registration is authoritative
 	 * - Potential conflicts between our registration and Core's
 	 * 
-	 * Dynamic block styles are handled separately via preenqueue_dynamic_block_styles()
+	 * Block styles are handled separately via preenqueue_block_styles()
 	 * to ensure they load in <head> and prevent CLS.
 	 *
 	 * @return void
@@ -620,7 +673,7 @@ class BlockEditorRegistrationController extends Controller {
 					? "{$block_editor_namespace}-{$foldername}-{$js_filetype}-script"
 					: "{$foldername}-{$js_filetype}";
 
-				$args = [ 
+				$args = [
 					'strategy'  => 'async',
 					'in_footer' => true,
 				];

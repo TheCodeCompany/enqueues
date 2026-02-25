@@ -75,6 +75,7 @@ This page lists **all** filters and actions available in the Enqueues MU Plugin,
 | `enqueues_block_editor_js_enqueue_script_{type}_{foldername}` | Enable/disable enqueue for plugin/extension JS.            | **Plugins/Extensions** | [Block Editor Filters](BLOCK-EDITOR.md#plugin-and-extension-filters) |
 | `enqueues_block_editor_js_localized_data_{type}_{foldername}` | Filter localized data for plugin/extension JS.             | **Plugins/Extensions** | [Block Editor Filters](BLOCK-EDITOR.md#plugin-and-extension-filters) |
 | `enqueues_block_editor_js_localized_data_var_name_{type}_{foldername}` | Filter variable name for plugin/extension localized data. | **Plugins/Extensions** | [Block Editor Filters](BLOCK-EDITOR.md#plugin-and-extension-filters) |
+| `enqueues_block_editor_preenqueue_block_styles`            | Control whether block styles are pre-enqueued in the head.   | **All** | [Block Editor Filters](BLOCK-EDITOR.md#block-editor-filters) |
 | `enqueues_block_editor_use_block_json_version`          | Control whether block.json versions are used for blocks.      | **Blocks** | [Block Editor Filters](BLOCK-EDITOR.md#block-editor-filters) |
 | `enqueues_block_editor_namespace`                      | Filter the block editor namespace.                             | **All** | [Block Editor Filters](BLOCK-EDITOR.md#more-filters--advanced-options) |
 | `enqueues_block_editor_dist_dir`                       | Filter the block editor dist directory.                        | **All** | [Block Editor Filters](BLOCK-EDITOR.md#more-filters--advanced-options) |

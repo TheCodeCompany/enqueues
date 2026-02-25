@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.5] - 2026-02-25
+
+### Changed
+- **ENHANCEMENT**: Extended early block style pre-enqueue coverage for CLS prevention
+  - Renamed pre-enqueue logic to handle both static and dynamic blocks found in page content
+  - Early enqueue now covers frontend block style and view style handles for all matched blocks
+- **ENHANCEMENT**: Added guard behaviour when sites override Core block style-loading defaults
+  - Added `enqueues_block_editor_preenqueue_block_styles` filter to control head pre-enqueue behaviour
+  - Pre-enqueue defaults now follow Enqueues Core Web Vitals defaults and can be overridden per site
+
+### Documentation
+- Updated `BLOCK-EDITOR.md` with:
+  - Core block style-loading defaults used by Enqueues
+  - Priority-based override guidance for site-level projects
+  - New `enqueues_block_editor_preenqueue_block_styles` filter details
+- Updated `FILTERS.md` to include `enqueues_block_editor_preenqueue_block_styles`
+
 ## [1.3.4] - 2026-02-23
 
 ### Added

@@ -3,29 +3,27 @@
 ## What Is Block Editor Integration?
 The Enqueues MU Plugin makes it easy to register custom blocks, block categories, and block editor plugins for the WordPress block editor (Gutenberg). You can control which scripts and styles are loaded in the editor, localize data, and more.
 
-## CLS (Cumulative Layout Shift) Fix for Dynamic Blocks
+## CLS (Cumulative Layout Shift) Fix for Block Styles
 
 ### The Problem
-Dynamic blocks (those with `render.php` or `"render"` in `block.json`) have a critical issue: WordPress Core discovers their CSS during content rendering, which happens after `wp_head`. This causes the styles to be output via `print_late_styles()` near the footer, resulting in:
+Some block styles can be discovered during content rendering after `wp_head`, which causes them to be output via `print_late_styles()` near the footer, resulting in:
 
 - **Cumulative Layout Shift (CLS)**: Content reflows as styles load late
 - **Poor Core Web Vitals scores**: CLS negatively impacts performance metrics
 - **Poor user experience**: Visible content jumps and layout shifts
 - **Late paint of block styles**: Styles appear after initial page render
 
-Static blocks don't have this issue because Core discovers their assets early and prints them in `<head>`.
-
 ### The Solution
 The Enqueues system implements a comprehensive fix:
 
 1. **Let Core own block registration**: Use `register_block_type_from_metadata()` so Core registers the correct handles from `block.json`
-2. **Detect dynamic blocks**: Identify blocks with `render.php` or `"render"` in `block.json` during registration
-3. **Pre-enqueue styles early**: On `wp_enqueue_scripts` (priority 1), check if dynamic blocks are present on the page and enqueue their styles
+2. **Track all block handles**: Store style and script handles for static and dynamic blocks during registration
+3. **Pre-enqueue styles early**: On `wp_enqueue_scripts` (priority 1), check if blocks are present on the page and enqueue style handles
 4. **Core Web Vitals optimization**: Use filters to ensure styles load as `<link>` tags in `<head>`
 5. **Add localized parameters**: Use Core's registered handles to localize data for block scripts
 
 ### Benefits
-- ✅ **Eliminates CLS** from dynamic block styles
+- ✅ **Eliminates CLS** from late-loading block styles
 - ✅ **No duplication**: Single source of truth (Core's registration from `block.json`)
 - ✅ **Works with custom handles**: Respects custom style handles defined in `block.json`
 - ✅ **Performance-friendly**: Only loads CSS for blocks present on the page
@@ -35,11 +33,12 @@ The Enqueues system implements a comprehensive fix:
 ### Implementation Details
 The fix is implemented in `BlockEditorRegistrationController`:
 
-- **Dynamic block detection**: Scans for `render.php` or `"render"` in `block.json`
+- **Block handle tracking**: Tracks static and dynamic block style handles from the registry
 - **Style handle extraction**: Determines exact handles Core will use (supports custom handles)
 - **Early pre-enqueue**: Uses `wp_enqueue_scripts` priority 1 to enqueue styles in `<head>`
 - **Core Web Vitals filters**: 
   - `should_load_separate_core_block_assets = true`: Only load CSS for blocks on page
+  - `should_load_block_assets_on_demand = false`: Disable on-demand loading to prefer head styles
   - `wp_should_inline_block_styles = false`: Use `<link>` tags instead of inline `<style>`
   - `styles_inline_size_limit = 0`: Prevent any block styles from being inlined
 - **Localized parameters**: Uses Core's registered handles to add localized data to block scripts
@@ -49,19 +48,18 @@ The fix is implemented in `BlockEditorRegistrationController`:
 #### What WordPress Core Does:
 1. **`init` (priority 10)**: Registers blocks from `block.json` using `register_block_type_from_metadata()`
 2. **Content rendering**: Discovers which blocks are used on the page
-3. **For static blocks**: Enqueues styles/scripts in `<head>` (no CLS issue)
-4. **For dynamic blocks**: Discovers styles during render, outputs via `print_late_styles()` near footer (causes CLS)
+3. **Late enqueue path**: Some style handles can still be enqueued during render and output near the footer
 
 #### What We Do:
 1. **`init` (priority 10)**: Let Core register blocks, then extract handles from registry
-2. **`wp_enqueue_scripts` (priority 1)**: Pre-enqueue dynamic block styles for blocks present on page
+2. **`wp_enqueue_scripts` (priority 1)**: Pre-enqueue block styles for static and dynamic blocks present on page
 3. **`wp_enqueue_scripts` (priority 20)**: Add localized parameters to registered block scripts
 4. **`enqueue_block_editor_assets` (priority 20)**: Add localized parameters to editor scripts
 
 #### Why This Order Matters:
-- **Priority 1**: Ensures dynamic block styles load before any content rendering
+- **Priority 1**: Ensures block styles load before any content rendering
 - **Priority 20**: Ensures localization happens after all scripts are registered
-- **Result**: Dynamic block CSS prints in `<head>` as `<link>` tags, preventing CLS
+- **Result**: Block CSS prints in `<head>` as `<link>` tags, preventing CLS
 
 ### Rollout Checklist
 When implementing this fix:
@@ -257,6 +255,21 @@ add_filter( 'enqueues_block_editor_js_localized_data_plugins_myplugin', function
 - `enqueues_block_editor_namespace`: Change the block registration namespace. Example:
 ```php
 add_filter( 'enqueues_block_editor_namespace', function() { return 'mytheme'; });
+```
+- Core style-loading defaults are set in `BlockEditorRegistrationController` at priority 10:
+```php
+add_filter( 'should_load_separate_core_block_assets', '__return_true' );
+add_filter( 'should_load_block_assets_on_demand', '__return_false' );
+add_filter( 'wp_should_inline_block_styles', '__return_false' );
+add_filter( 'styles_inline_size_limit', '__return_zero' );
+```
+- Site-level overrides should use a higher priority (e.g. `20`):
+```php
+add_filter( 'should_load_block_assets_on_demand', '__return_true', 20 );
+```
+- `enqueues_block_editor_preenqueue_block_styles`: Control whether Enqueues pre-enqueues block styles in the head. Defaults to enabled only when Enqueues style-loading defaults remain active.
+```php
+add_filter( 'enqueues_block_editor_preenqueue_block_styles', '__return_true' );
 ```
 - `enqueues_block_editor_use_block_json_version`: Control block version source. Default: `false` (use compiled asset versions).
 ```php
