@@ -258,6 +258,16 @@ add_filter( 'enqueues_block_editor_js_localized_data_plugins_myplugin', function
 ```php
 add_filter( 'enqueues_block_editor_namespace', function() { return 'mytheme'; });
 ```
+- `enqueues_block_editor_use_block_json_version`: Control block version source. Default: `false` (use compiled asset versions).
+```php
+// Use block.json version for all blocks.
+add_filter( 'enqueues_block_editor_use_block_json_version', '__return_true' );
+
+// Use block.json version for specific blocks only.
+add_filter( 'enqueues_block_editor_use_block_json_version', function( $use_block_json_version, $block_name ) {
+    return in_array( $block_name, [ 'custom/hero', 'custom/gallery' ], true );
+}, 10, 2 );
+```
 - `enqueues_block_editor_dist_dir`: Change the block editor dist directory. Example:
 ```php
 add_filter( 'enqueues_block_editor_dist_dir', function() { return '/dist/block-editor'; });
@@ -282,6 +292,8 @@ add_filter( 'enqueues_load_controller', function( $load, $controller, $context )
     return $load;
 }, 10, 3 );
 ```
+
+**Version handling note:** Block registrations use compiled asset versions derived from built files by default. Use `enqueues_block_editor_use_block_json_version` to opt back into `block.json` versions for all blocks or selected block names.
 
 # BLOCK-EDITOR-SPECIFIC FOLDER/FILE FEATURES IN WEBPACK
 

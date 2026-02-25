@@ -123,6 +123,8 @@ class BlockEditorRegistrationController extends Controller {
 		add_filter( 'styles_inline_size_limit', '__return_zero' );
 
 		// Hooks to register blocks, categories, and plugins.
+		add_filter( 'block_type_metadata', [ $this, 'set_block_metadata_version' ], 99, 2 );
+		add_filter( 'block_type_metadata_settings', [ $this, 'set_block_asset_version' ], 99, 2 );
 		add_action( 'init', [ $this, 'register_blocks' ] );
 		add_filter( 'block_categories_all', [ $this, 'block_categories' ], 10, 2 );
 
@@ -136,6 +138,178 @@ class BlockEditorRegistrationController extends Controller {
 		// Enqueue actions (keep existing behavior for non-block bundles).
 		add_action( 'wp_enqueue_scripts', [ $this, 'enqueue_frontend_assets' ] );
 		add_action( 'enqueue_block_editor_assets', [ $this, 'enqueue_editor_assets' ] );
+	}
+
+	/**
+	 * Set block metadata version using compiled asset versions.
+	 *
+	 * @param array  $metadata Block metadata parsed from block.json.
+	 * @param string $file     Path to the block.json file.
+	 *
+	 * @return array
+	 */
+	public function set_block_metadata_version( array $metadata, string $file = '' ): array {
+		if ( empty( $metadata['name'] ) ) {
+			return $metadata;
+		}
+
+		$namespace = get_block_editor_namespace();
+		if ( 0 !== strpos( $metadata['name'], "{$namespace}/" ) ) {
+			return $metadata;
+		}
+
+		$block_parts = explode( '/', $metadata['name'] );
+		$block_slug  = end( $block_parts );
+
+		if ( $this->should_use_block_json_version( (string) $metadata['name'], $metadata ) ) {
+			return $metadata;
+		}
+
+		$asset_version = $this->get_block_asset_version( $block_slug, $metadata );
+		if ( $asset_version ) {
+			$metadata['version'] = (string) $asset_version;
+		}
+
+		return $metadata;
+	}
+
+	/**
+	 * Set block registration settings version using compiled asset versions.
+	 *
+	 * @param array $settings Block settings passed to registration.
+	 * @param array $metadata Block metadata parsed from block.json.
+	 *
+	 * @return array
+	 */
+	public function set_block_asset_version( array $settings, array $metadata ): array {
+		if ( empty( $metadata['name'] ) ) {
+			return $settings;
+		}
+
+		$namespace = get_block_editor_namespace();
+		if ( 0 !== strpos( $metadata['name'], "{$namespace}/" ) ) {
+			return $settings;
+		}
+
+		$block_parts = explode( '/', $metadata['name'] );
+		$block_slug  = end( $block_parts );
+
+		if ( $this->should_use_block_json_version( (string) $metadata['name'], $metadata ) ) {
+			return $settings;
+		}
+
+		$asset_version = $this->get_block_asset_version( $block_slug, $metadata );
+		if ( $asset_version ) {
+			$settings['version'] = (string) $asset_version;
+		}
+
+		return $settings;
+	}
+
+	/**
+	 * Build a deterministic version hash from compiled block assets.
+	 *
+	 * @param string $block_slug Block folder name.
+	 * @param array  $metadata   Block metadata parsed from block.json.
+	 *
+	 * @return string|int
+	 */
+	private function get_block_asset_version( string $block_slug, array $metadata ): string|int {
+		$directory                  = get_template_directory();
+		$block_editor_dist_dir_path = ltrim( get_block_editor_dist_dir(), '/' );
+		$asset_keys                 = [ 'style', 'editorStyle', 'viewStyle', 'script', 'editorScript', 'viewScript' ];
+		$version_parts              = [];
+
+		foreach ( $asset_keys as $asset_key ) {
+			if ( empty( $metadata[ $asset_key ] ) ) {
+				continue;
+			}
+
+			$asset_value = $metadata[ $asset_key ];
+			$asset_items = is_array( $asset_value ) ? $asset_value : [ $asset_value ];
+
+			foreach ( $asset_items as $asset_item ) {
+				if ( ! is_string( $asset_item ) || 0 !== strpos( $asset_item, 'file:' ) ) {
+					continue;
+				}
+
+				$relative_file = ltrim( substr( $asset_item, 5 ), './' );
+				if ( '' === $relative_file ) {
+					continue;
+				}
+
+				$file_parts = pathinfo( $relative_file );
+				$file_name  = $file_parts['filename'] ?? '';
+				$file_ext   = $file_parts['extension'] ?? '';
+
+				if ( '' === $file_name || '' === $file_ext ) {
+					continue;
+				}
+
+				$compiled_file_path = asset_find_file_path( "{$block_editor_dist_dir_path}/blocks/{$block_slug}", $file_name, $file_ext, $directory );
+				if ( ! $compiled_file_path ) {
+					continue;
+				}
+
+				$compiled_file_mtime = filemtime( "{$directory}{$compiled_file_path}" );
+				if ( false === $compiled_file_mtime ) {
+					continue;
+				}
+
+				$version_parts[] = "{$asset_key}:{$asset_item}:{$compiled_file_mtime}";
+			}
+		}
+
+		if ( empty( $version_parts ) ) {
+			return 0;
+		}
+
+		return md5( implode( '|', $version_parts ) );
+	}
+
+	/**
+	 * Determine if block.json version should be used for a block.
+	 *
+	 * Default is false (use compiled asset versions). This filter accepts:
+	 * - bool: true for all blocks, false for none.
+	 * - string: full block name (namespace/slug), slug only, or '*'/all.
+	 * - array: list of block names/slugs or '*'/all.
+	 *
+	 * @param string $block_name Full block name (namespace/slug).
+	 * @param array  $metadata   Block metadata parsed from block.json.
+	 *
+	 * @return bool
+	 */
+	private function should_use_block_json_version( string $block_name, array $metadata ): bool {
+		$filter_value = apply_filters( 'enqueues_block_editor_use_block_json_version', false, $block_name, $metadata );
+		$block_parts  = explode( '/', $block_name );
+		$block_slug   = end( $block_parts );
+
+		if ( is_bool( $filter_value ) ) {
+			return $filter_value;
+		}
+
+		if ( is_string( $filter_value ) ) {
+			$value = trim( $filter_value );
+
+			return in_array( $value, [ '*', 'all', $block_name, $block_slug ], true );
+		}
+
+		if ( is_array( $filter_value ) ) {
+			$values = array_map(
+				static function ( $item ) {
+					return is_string( $item ) ? trim( $item ) : $item;
+				},
+				$filter_value
+			);
+
+			return in_array( '*', $values, true )
+				|| in_array( 'all', $values, true )
+				|| in_array( $block_name, $values, true )
+				|| in_array( $block_slug, $values, true );
+		}
+
+		return false;
 	}
 
 	/**

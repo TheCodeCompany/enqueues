@@ -6,6 +6,7 @@
 .metadata
 *.swp
 *~.nib
+.vscode/
 local.properties
 .classpath
 .settings/
