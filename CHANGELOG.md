@@ -14,6 +14,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **ENHANCEMENT**: Added guard behaviour when sites override Core block style-loading defaults
   - Added `enqueues_block_editor_preenqueue_block_styles` filter to control head pre-enqueue behaviour
   - Pre-enqueue defaults now follow Enqueues Core Web Vitals defaults and can be overridden per site
+- **ENHANCEMENT**: Extended post-type remap support to post-name asset matching
+  - `enqueues_theme_post_type_asset_remap` now applies to `single-{post-type}-{post-name}` lookups
+  - Default lookup order now checks original post type first, then remapped post type
+  - Added `enqueues_theme_post_type_asset_candidates` filter to override candidate order per project
 
 ### Documentation
 - Updated `BLOCK-EDITOR.md` with:
@@ -21,6 +25,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Priority-based override guidance for site-level projects
   - New `enqueues_block_editor_preenqueue_block_styles` filter details
 - Updated `FILTERS.md` to include `enqueues_block_editor_preenqueue_block_styles`
+- Updated `THEME-ASSETS.md` and `FILTERS.md` to document remap behaviour for post-name matching and candidate ordering
 
 ## [1.3.4] - 2026-02-23
 

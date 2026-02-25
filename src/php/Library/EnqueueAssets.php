@@ -147,16 +147,22 @@ class EnqueueAssets {
 			return null;
 		}
 
-		$asset_name = "single-{$post_type}-{$post->post_name}";
-		$matched    = $this->get_existing_asset_name( $asset_name );
+		$post_type_candidates = $this->get_post_type_asset_candidates( $post_type );
+		foreach ( $post_type_candidates as $post_type_candidate ) {
+			$asset_name = "single-{$post_type_candidate}-{$post->post_name}";
+			$matched    = $this->get_existing_asset_name( $asset_name );
 
-		if ( $matched ) {
-			return $matched;
-		}
+			if ( $matched ) {
+				return $matched;
+			}
 
-		$slugified = string_slugify( $asset_name );
-		if ( $slugified !== $asset_name ) {
-			return $this->get_existing_asset_name( $slugified );
+			$slugified = string_slugify( $asset_name );
+			if ( $slugified !== $asset_name ) {
+				$slugified_match = $this->get_existing_asset_name( $slugified );
+				if ( $slugified_match ) {
+					return $slugified_match;
+				}
+			}
 		}
 
 		return null;
@@ -239,7 +245,7 @@ class EnqueueAssets {
 	/**
 	 * Get post type candidates for asset matching.
 	 *
-	 * Remapped post types are checked first, followed by the original post type.
+	 * Original post type is checked first, then remapped post type.
 	 *
 	 * @param string $post_type The current post type.
 	 *
@@ -253,7 +259,7 @@ class EnqueueAssets {
 		 * @param string $post_type       The current post type.
 		 */
 		$post_type_remap = apply_filters( 'enqueues_theme_post_type_asset_remap', [], $post_type );
-		$candidates      = [];
+		$candidates      = [ $post_type ];
 
 		if ( is_array( $post_type_remap ) &&
 			isset( $post_type_remap[ $post_type ] ) &&
@@ -262,9 +268,15 @@ class EnqueueAssets {
 			$candidates[] = $post_type_remap[ $post_type ];
 		}
 
-		$candidates[] = $post_type;
+		$candidates = array_values( array_unique( $candidates ) );
 
-		return array_values( array_unique( $candidates ) );
+		/**
+		 * Filter ordered post type candidates for asset matching.
+		 *
+		 * @param array  $candidates Ordered post type candidates.
+		 * @param string $post_type  The current post type.
+		 */
+		return (array) apply_filters( 'enqueues_theme_post_type_asset_candidates', $candidates, $post_type );
 	}
 
 	/**

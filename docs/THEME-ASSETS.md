@@ -15,13 +15,15 @@ The plugin resolves the asset name in a strict order, stopping on the first matc
 
 This ensures every page always has the necessary assets, even if you haven’t created a specific file for that context.
 
-When a post type remap exists, child and post type checks run remapped-first, then original.
+When a post type remap exists, post name, child, and post type checks run original first, then remapped.
 For example, if `camera` is remapped to `product`, Enqueues checks:
 
-1. `single-product-child`
-2. `single-camera-child`
-3. `single-product`
-4. `single-camera`
+1. `single-camera-{post-name}`
+2. `single-product-{post-name}`
+3. `single-camera-child`
+4. `single-product-child`
+5. `single-camera`
+6. `single-product`
 
 ## Customizing Dependencies, Localization, and More
 You can use filters to:
@@ -59,7 +61,7 @@ Use these patterns when creating assets:
 Post name and child post matches only apply to single posts.
 
 ## Post Type Remapping
-Use `enqueues_theme_post_type_asset_remap` to remap post types for child/post-type matching.
+Use `enqueues_theme_post_type_asset_remap` to remap post types for post name, child, and post-type matching.
 
 ```php
 add_filter(
@@ -74,9 +76,12 @@ add_filter(
 );
 ```
 
-This filter does not change post name matching. It applies to:
+This filter applies to:
+- `single-{post-type}-{post-name}`
 - `single-{post-type}-child`
 - `single-{post-type}`
+
+Use `enqueues_theme_post_type_asset_candidates` to override the final ordered candidate list when you need custom precedence.
 
 ## Common Pitfalls
 - **Filter Key Must Match the Asset Handle:** If the fallback to `main.js` is used, your filter should be for `main`, not the original page type or post type.
@@ -171,7 +176,8 @@ add_filter( 'enqueues_theme_skip_scan_directories', function( $dirs ) {
 ```
 - `enqueues_theme_css_src_dir`: Change the CSS source directory. Default: 'dist/css'.
 - `enqueues_theme_js_src_dir`: Change the JS source directory. Default: 'dist/js'.
-- `enqueues_theme_post_type_asset_remap`: Remap post types for child/post-type asset matching. Accepts an associative array, e.g. `[ 'camera' => 'product' ]`.
+- `enqueues_theme_post_type_asset_remap`: Remap post types for post-name, child, and post-type asset matching. Accepts an associative array, e.g. `[ 'camera' => 'product' ]`.
+- `enqueues_theme_post_type_asset_candidates`: Override ordered post type candidates used for post-name, child, and post-type matching.
 - `enqueues_asset_theme_src_directory`: Change the source directory for SCSS/JS. Default: 'src'.
 - `enqueues_asset_theme_dist_directory`: Change the dist directory for compiled assets. Default: 'dist'.
 - `enqueues_asset_theme_js_extension`: Change the JS file extension. Default: 'js'.
