@@ -30,6 +30,8 @@ This page lists **all** filters and actions available in the Enqueues MU Plugin,
 | `enqueues_theme_skip_scan_directories`                | Filter directories to skip when scanning for assets.           | [Theme Asset Loading](THEME-ASSETS.md#customizing-dependencies-localization-and-more) |
 | `enqueues_theme_css_src_dir`                          | Filter the source directory for theme CSS assets.              | [Theme Asset Loading](THEME-ASSETS.md#customizing-dependencies-localization-and-more) |
 | `enqueues_theme_js_src_dir`                           | Filter the source directory for theme JS assets.               | [Theme Asset Loading](THEME-ASSETS.md#customizing-dependencies-localization-and-more) |
+| `enqueues_theme_post_type_asset_remap`                | Remap post types for post-name, child, and post-type lookup precedence. | [Theme Asset Loading](THEME-ASSETS.md#post-type-remapping) |
+| `enqueues_theme_post_type_asset_candidates`           | Filter ordered post type candidates for post-name/child/post-type matching. | [Theme Asset Loading](THEME-ASSETS.md#post-type-remapping) |
 | `enqueues_render_css_inline`                          | Filter whether to render CSS inline (per handle).              | [Inline Asset Filters](INLINE-ASSETS.md#filters) |
 | `enqueues_render_js_inline`                           | Filter whether to render JS inline (per handle).               | [Inline Asset Filters](INLINE-ASSETS.md#filters) |
 
@@ -74,6 +76,8 @@ This page lists **all** filters and actions available in the Enqueues MU Plugin,
 | `enqueues_block_editor_js_enqueue_script_{type}_{foldername}` | Enable/disable enqueue for plugin/extension JS.            | **Plugins/Extensions** | [Block Editor Filters](BLOCK-EDITOR.md#plugin-and-extension-filters) |
 | `enqueues_block_editor_js_localized_data_{type}_{foldername}` | Filter localized data for plugin/extension JS.             | **Plugins/Extensions** | [Block Editor Filters](BLOCK-EDITOR.md#plugin-and-extension-filters) |
 | `enqueues_block_editor_js_localized_data_var_name_{type}_{foldername}` | Filter variable name for plugin/extension localized data. | **Plugins/Extensions** | [Block Editor Filters](BLOCK-EDITOR.md#plugin-and-extension-filters) |
+| `enqueues_block_editor_preenqueue_block_styles`            | Control whether block styles are pre-enqueued in the head.   | **All** | [Block Editor Filters](BLOCK-EDITOR.md#block-editor-filters) |
+| `enqueues_block_editor_use_block_json_version`          | Control whether block.json versions are used for blocks.      | **Blocks** | [Block Editor Filters](BLOCK-EDITOR.md#block-editor-filters) |
 | `enqueues_block_editor_namespace`                      | Filter the block editor namespace.                             | **All** | [Block Editor Filters](BLOCK-EDITOR.md#more-filters--advanced-options) |
 | `enqueues_block_editor_dist_dir`                       | Filter the block editor dist directory.                        | **All** | [Block Editor Filters](BLOCK-EDITOR.md#more-filters--advanced-options) |
 | `enqueues_block_editor_categories`                     | Filter block editor categories.                                | **All** | [Block Editor Filters](BLOCK-EDITOR.md#more-filters--advanced-options) |

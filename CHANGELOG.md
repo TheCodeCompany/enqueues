@@ -5,6 +5,44 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.5] - 2026-02-25
+
+### Changed
+- **ENHANCEMENT**: Extended early block style pre-enqueue coverage for CLS prevention
+  - Renamed pre-enqueue logic to handle both static and dynamic blocks found in page content
+  - Early enqueue now covers frontend block style and view style handles for all matched blocks
+- **ENHANCEMENT**: Added explicit control for head pre-enqueue behaviour
+  - Added `enqueues_block_editor_preenqueue_block_styles` filter to control forced head pre-enqueue
+  - Pre-enqueue defaults to enabled for static and dynamic blocks, and can be disabled per site to fall back to WordPress behaviour
+- **ENHANCEMENT**: Extended post-type remap support to post-name asset matching
+  - `enqueues_theme_post_type_asset_remap` now applies to `single-{post-type}-{post-name}` lookups
+  - Default lookup order now checks original post type first, then remapped post type
+  - Added `enqueues_theme_post_type_asset_candidates` filter to override candidate order per project
+
+### Documentation
+- Updated `BLOCK-EDITOR.md` with:
+  - Core block style-loading defaults used by Enqueues
+  - New `enqueues_block_editor_preenqueue_block_styles` filter details
+- Updated `FILTERS.md` to include `enqueues_block_editor_preenqueue_block_styles`
+- Updated `THEME-ASSETS.md` and `FILTERS.md` to document remap behaviour for post-name matching and candidate ordering
+
+## [1.3.4] - 2026-02-23
+
+### Added
+- **ENHANCEMENT**: Expanded single theme asset matching for more specific content contexts
+  - Added post name matching support using `single-{post_type}-{post_name}` for single posts
+  - Added hierarchical child post matching support using `single-{post_type}-child`
+  - Introduced strict matching order for single contexts: template, post name, child post, post type, page type, then main fallback
+  - Preserved fallback behaviour so `main` remains the default when no specific asset is found
+- **ENHANCEMENT**: Added post type remapping filter for asset matching
+  - Added `enqueues_theme_post_type_asset_remap` filter to remap CPT lookups for child and post type matching
+  - Remapped post types are checked first, then the original post type
+  - Supports shared asset bundles across related post types (for example, `camera` or `lens` remapped to `product`)
+
+### Documentation
+- Updated `THEME-ASSETS.md` with the new matching order and post type remapping behaviour
+- Added `enqueues_theme_post_type_asset_remap` to `FILTERS.md` with usage context
+
 ## [1.3.3] - 2025-01-27
 
 ### Fixed
