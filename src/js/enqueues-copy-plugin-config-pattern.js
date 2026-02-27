@@ -102,25 +102,111 @@ function getCopyPluginConfigRenderPhpPattern(rootDir, distDir, srcDirPattern = '
 }
 
 /**
+ * Normalise child directories for block child directory copying.
+ *
+ * @param {string|string[]} childDirs - Directory name or list of directory names.
+ * @returns {string[]} Normalised list of child directories.
+ */
+function getNormalisedChildDirs(childDirs) {
+	if (Array.isArray(childDirs)) {
+		return childDirs
+			.filter((childDir) => typeof childDir === 'string' && '' !== childDir.trim())
+			.map((childDir) => childDir.trim());
+	}
+
+	if ('string' === typeof childDirs && '' !== childDirs.trim()) {
+		return [childDirs.trim()];
+	}
+
+	return ['assets'];
+}
+
+/**
+ * Generates a CopyPlugin configuration for copying block child directories recursively.
+ *
+ * @param {string} rootDir       - The root directory path.
+ * @param {string} distDir       - The distribution directory path.
+ * @param {string} srcDirPattern - The file matching pattern to copy.
+ * @param {string} srcBlockDir   - The source directory containing blocks.
+ * @param {string|string[]} childDirs - Child directory names to copy from each block.
+ * @param {string} distBlockDir  - The destination directory to copy into.
+ * @returns {Object} A CopyPlugin pattern configuration for block child directories.
+ */
+function getCopyPluginConfigBlockChildDirsPattern(
+	rootDir,
+	distDir,
+	srcDirPattern = '**/src',
+	srcBlockDir = 'block-editor/blocks',
+	childDirs = ['assets'],
+	distBlockDir = srcBlockDir
+) {
+	const normalisedChildDirs = getNormalisedChildDirs(childDirs);
+	const childDirPattern = 1 === normalisedChildDirs.length
+		? normalisedChildDirs[0]
+		: `{${normalisedChildDirs.join(',')}}`;
+
+	return {
+		context: rootDir,
+		from: `${srcDirPattern}/${srcBlockDir}/**/${childDirPattern}/**/*`,
+		to: (pathContext) => {
+			const blockDirFragment = `/${srcBlockDir}/`;
+			const blockDirIndex = pathContext.absoluteFilename.lastIndexOf(blockDirFragment);
+
+			if (-1 === blockDirIndex) {
+				return `${distDir}/${pathContext.absoluteFilename.split('/').pop()}`;
+			}
+
+			const relativePath = pathContext.absoluteFilename.slice(blockDirIndex + 1);
+			const sourceBlockDirParts = srcBlockDir.split('/').length;
+			const relativeParts = relativePath.split('/').slice(sourceBlockDirParts).join('/');
+			const destinationBlockDir = distBlockDir || srcBlockDir;
+
+			return `${distDir}/${destinationBlockDir}/${relativeParts}`;
+		},
+		noErrorOnMissing: true,
+	};
+}
+
+/**
  * Generates a CopyPlugin configuration pattern based on the provided context.
  *
  * @param {string} rootDir - The root directory path.
  * @param {string} distDir - The distribution directory path.
- * @param {string} context - The context specifying the type of files to copy ('images', 'fonts', 'block-json', 'render-php').
- * @param {string} from    - The file matching pattern to copy. Defaults are provided within each pattern.
+ * @param {string} context - The context specifying the type of files to copy ('images', 'fonts', 'block-json', 'render-php', 'block-child-dirs').
+ * @param {string} srcDirPattern - The file matching pattern to copy. Defaults are provided within each pattern.
+ * @param {string} srcBlockDir - The source directory containing blocks.
+ * @param {string|string[]} childDirs - Child directory names to copy from each block.
+ * @param {string} distBlockDir - The destination block directory.
  * @returns {Object} A CopyPlugin pattern configuration based on the provided context.
  * @throws {Error} If the context is unknown.
  */
-function enqueuesGetCopyPluginConfigPattern(rootDir, distDir, context, srcDirPattern) {
+function enqueuesGetCopyPluginConfigPattern(
+	rootDir,
+	distDir,
+	context,
+	srcDirPattern,
+	srcBlockDir = 'block-editor/blocks',
+	childDirs = ['assets'],
+	distBlockDir = srcBlockDir
+) {
 	switch (context) {
 		case 'images':
 			return getCopyPluginConfigImagePattern(rootDir, distDir, srcDirPattern);
 		case 'fonts':
 			return getCopyPluginConfigFontPattern(rootDir, distDir, srcDirPattern);
 		case 'block-json':
-			return getCopyPluginConfigBlockJsonPattern(rootDir, distDir, srcDirPattern);
+			return getCopyPluginConfigBlockJsonPattern(rootDir, distDir, srcDirPattern, srcBlockDir);
 		case 'render-php':
-			return getCopyPluginConfigRenderPhpPattern(rootDir, distDir, srcDirPattern);
+			return getCopyPluginConfigRenderPhpPattern(rootDir, distDir, srcDirPattern, srcBlockDir);
+		case 'block-child-dirs':
+			return getCopyPluginConfigBlockChildDirsPattern(
+				rootDir,
+				distDir,
+				srcDirPattern,
+				srcBlockDir,
+				childDirs,
+				distBlockDir
+			);
 		default:
 			throw new Error(`Unknown context: ${context}`);
 	}
