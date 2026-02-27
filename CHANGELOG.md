@@ -11,6 +11,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **ENHANCEMENT**: Extended early block style pre-enqueue coverage for CLS prevention
   - Renamed pre-enqueue logic to handle both static and dynamic blocks found in page content
   - Early enqueue now covers frontend block style and view style handles for all matched blocks
+- **ENHANCEMENT**: Added generic block child directory copy context for Webpack copy patterns
+  - Added `block-child-dirs` context to `enqueuesGetCopyPluginConfigPattern`
+  - Supports custom source block directory, destination block directory, and multiple child directory names
 - **ENHANCEMENT**: Added explicit control for head pre-enqueue behaviour
   - Added `enqueues_block_editor_preenqueue_block_styles` filter to control forced head pre-enqueue
   - Pre-enqueue defaults to enabled for static and dynamic blocks, and can be disabled per site to fall back to WordPress behaviour
@@ -23,6 +26,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Updated `BLOCK-EDITOR.md` with:
   - Core block style-loading defaults used by Enqueues
   - New `enqueues_block_editor_preenqueue_block_styles` filter details
+- Updated `WEBPACK.md` with `block-child-dirs` copy pattern usage and examples
 - Updated `FILTERS.md` to include `enqueues_block_editor_preenqueue_block_styles`
 - Updated `THEME-ASSETS.md` and `FILTERS.md` to document remap behaviour for post-name matching and candidate ordering
 

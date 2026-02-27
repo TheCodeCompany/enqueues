@@ -9,7 +9,7 @@ It also helps with copying images, fonts, and other assets, and integrates with 
 - Use `enqueues-merge-webpack-entries.js` to merge dynamic and custom entries.
 - Use `enqueues-theme-webpack-entries.js` (deprecated) or `enqueues-webpack-entries.js` for theme asset entry generation.
 - Use `enqueues-block-editor-webpack-entries.js` for block editor asset entry generation.
-- Use `enqueues-copy-plugin-config-pattern.js` to generate CopyWebpackPlugin patterns for images, fonts, block JSON, and PHP render files.
+- Use `enqueues-copy-plugin-config-pattern.js` to generate CopyWebpackPlugin patterns for images, fonts, block JSON, PHP render files, and block child directories.
 
 ## EXAMPLE WEBPACK CONFIG
 ```js
@@ -187,9 +187,9 @@ const entries = enqueuesMergeWebpackEntries(
 
 This works for both main theme files and block editor files. See [THEME-ASSETS.md](THEME-ASSETS.md) for more on theme asset structure.
 
-## COPYING BLOCK JSON AND PHP RENDER FILES
+## COPYING BLOCK JSON, PHP RENDER FILES, AND BLOCK CHILD DIRECTORIES
 
-Use `enqueuesGetCopyPluginConfigPattern` with CopyWebpackPlugin to copy block JSON and PHP render files:
+Use `enqueuesGetCopyPluginConfigPattern` with CopyWebpackPlugin to copy block JSON, PHP render files, and specific child directories inside each block:
 
 ```js
 const copyPlugin = new CopyWebpackPlugin({
@@ -198,11 +198,22 @@ const copyPlugin = new CopyWebpackPlugin({
     enqueuesGetCopyPluginConfigPattern(rootDir, distDir, 'fonts'),
     enqueuesGetCopyPluginConfigPattern(rootDir, distDir, 'block-json'),
     enqueuesGetCopyPluginConfigPattern(rootDir, distDir, 'render-php'),
+    enqueuesGetCopyPluginConfigPattern(
+      rootDir,
+      distDir,
+      'block-child-dirs',
+      '**/src',
+      'block-editor/blocks',
+      ['assets', 'deprecated'],
+      'block-editor/blocks'
+    ),
   ],
 });
 ```
 
 This ensures block registration and server-side rendering work as expected.
+
+Use `block-child-dirs` when you need to copy one or more named directories from each block recursively.
 
 ## CLEANING UP BUILD OUTPUT
 
@@ -344,13 +355,22 @@ const jquery = new webpack.ProvidePlugin({
   'window.jQuery': 'jquery',
 });
 
-// Copy block JSON, PHP render files, images, and fonts
+// Copy block JSON, PHP render files, block child directories, images, and fonts
 const copyPlugin = new CopyWebpackPlugin({
   patterns: [
     enqueuesGetCopyPluginConfigPattern(rootDir, distDir, 'images'),
     enqueuesGetCopyPluginConfigPattern(rootDir, distDir, 'fonts'),
     enqueuesGetCopyPluginConfigPattern(rootDir, distDir, 'block-json'),
     enqueuesGetCopyPluginConfigPattern(rootDir, distDir, 'render-php'),
+    enqueuesGetCopyPluginConfigPattern(
+      rootDir,
+      distDir,
+      'block-child-dirs',
+      '**/src',
+      'block-editor/blocks',
+      ['assets', 'deprecated'],
+      'block-editor/blocks'
+    ),
   ],
 });
 
