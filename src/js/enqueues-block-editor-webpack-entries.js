@@ -61,24 +61,25 @@ const enqueuesBlockEditorWebpackEntries = (rootDir, pathModule, globModule, srcD
 
     // Merge all JS and CSS entries for blocks, plugins, and extensions.
     const mergedEntries = enqueuesMergeWebpackEntries(
-        getBlockEditorEntries('blocks', 'js-editor', 'js'),
-        getBlockEditorEntries('blocks', 'js-script', 'js'),
-        getBlockEditorEntries('blocks', 'js-view', 'js'),
-        getBlockEditorEntries('blocks', 'css-editor', 'scss'),
-        getBlockEditorEntries('blocks', 'css-style', 'scss'),
-        getBlockEditorEntries('blocks', 'css-view', 'scss'),
-        getBlockEditorEntries('plugins', 'js-editor', 'js'),
-        getBlockEditorEntries('plugins', 'js-script', 'js'),
-        getBlockEditorEntries('plugins', 'js-view', 'js'),
-        getBlockEditorEntries('plugins', 'css-style', 'scss'),
-        getBlockEditorEntries('plugins', 'css-view', 'scss'),
-        getBlockEditorEntries('extensions', 'js-editor', 'js'),
-        getBlockEditorEntries('extensions', 'js-script', 'js'),
-        getBlockEditorEntries('extensions', 'js-view', 'js'),
-        getBlockEditorEntries('extensions', 'css-editor', 'scss'),
-        getBlockEditorEntries('extensions', 'css-style', 'scss'),
-        getBlockEditorEntries('extensions', 'css-view', 'scss')
-    );
+		getBlockEditorEntries('blocks', 'js-editor', 'js'),
+		getBlockEditorEntries('blocks', 'js-script', 'js'),
+		getBlockEditorEntries('blocks', 'js-view', 'js'),
+		getBlockEditorEntries('blocks', 'css-editor', 'scss'),
+		getBlockEditorEntries('blocks', 'css-style', 'scss'),
+		getBlockEditorEntries('blocks', 'css-view', 'scss'),
+		getBlockEditorEntries('plugins', 'js-editor', 'js'),
+		getBlockEditorEntries('plugins', 'js-script', 'js'),
+		getBlockEditorEntries('plugins', 'js-view', 'js'),
+		getBlockEditorEntries('plugins', 'css-editor', 'scss'),
+		getBlockEditorEntries('plugins', 'css-style', 'scss'),
+		getBlockEditorEntries('plugins', 'css-view', 'scss'),
+		getBlockEditorEntries('extensions', 'js-editor', 'js'),
+		getBlockEditorEntries('extensions', 'js-script', 'js'),
+		getBlockEditorEntries('extensions', 'js-view', 'js'),
+		getBlockEditorEntries('extensions', 'css-editor', 'scss'),
+		getBlockEditorEntries('extensions', 'css-style', 'scss'),
+		getBlockEditorEntries('extensions', 'css-view', 'scss'),
+	);
 
     console.log('Generated Entries from Enqueues Block Editor Webpack Entries:', mergedEntries);
 
