@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.6] - 2026-05-17
+
+### Added
+- **ENHANCEMENT**: Plugin block editor styles in Webpack block editor entries
+  - Merges `getBlockEditorEntries('plugins', 'css-editor', 'scss')` with other block editor asset entries
+  - Enables plugin `css-editor` SCSS to be built and loaded on the admin block editor side
+
 ## [1.3.5] - 2026-02-25
 
 ### Changed
