@@ -96,7 +96,8 @@ class ThemeEnqueueJqueryController extends Controller {
 		$strategy = apply_filters( 'enqueues_jquery_loading_strategy', '' );
 
 		if ( in_array( $strategy, [ 'defer', 'async' ], true ) ) {
-			wp_scripts()->add_data( 'jquery', 'strategy', $strategy );
+			// 'jquery' is a WP alias (no src) — strategies must be set only on the concrete handles.
+			// Passing strategy to the alias triggers a _doing_it_wrong notice in WP 6.3+.
 			wp_scripts()->add_data( 'jquery-core', 'strategy', $strategy );
 			wp_scripts()->add_data( 'jquery-migrate', 'strategy', $strategy );
 		}
