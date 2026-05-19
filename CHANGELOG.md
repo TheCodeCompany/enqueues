@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.7] - 2026-05-19
+
+### Added
+- **ENHANCEMENT**: Frontend jQuery controls in `ThemeEnqueueJqueryController`
+  - Introduced filter-driven behaviour so jQuery can be fully disabled, kept in the header, moved to the footer, or given a `defer` / `async` loading strategy without changing core enqueue logic
+  - `enqueues_disable_jquery` — dequeue and deregister `jquery`, `jquery-core`, and `jquery-migrate` when true (default false)
+  - `enqueues_load_jquery_in_footer` — control footer grouping via script `group` data (default true); loading strategy filters still apply when footer placement is disabled
+  - `enqueues_jquery_loading_strategy` — optional `defer` or `async` strategy for the jQuery handles (default empty, no override)
+
 ## [1.3.6] - 2026-05-17
 
 ### Added

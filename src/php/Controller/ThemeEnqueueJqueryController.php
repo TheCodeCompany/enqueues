@@ -40,13 +40,33 @@ class ThemeEnqueueJqueryController extends Controller {
 	/**
 	 * Load jQuery in the footer.
 	 *
-	 * This method moves the jQuery script to the footer of the page. It checks a filter
-	 * `enqueues_load_jquery_in_footer` to determine whether or not to move jQuery. If the filter
-	 * returns `true`, jQuery is moved to the footer.
+	 * This method allows jQuery to be disabled, moved to the footer, and/or assigned
+	 * an async/defer loading strategy by filters.
 	 *
 	 * @return void
 	 */
 	public function move_jquery_to_footer() {
+		/**
+		 * Filter to disable jQuery on the frontend.
+		 *
+		 * Allows developers to fully disable jQuery handles for pages that do not
+		 * require it. Default false.
+		 *
+		 * @param bool $disable_jquery Whether to disable jQuery frontend scripts.
+		 */
+		$disable_jquery = apply_filters( 'enqueues_disable_jquery', false );
+
+		if ( $disable_jquery ) {
+			wp_dequeue_script( 'jquery' );
+			wp_dequeue_script( 'jquery-core' );
+			wp_dequeue_script( 'jquery-migrate' );
+
+			wp_deregister_script( 'jquery' );
+			wp_deregister_script( 'jquery-core' );
+			wp_deregister_script( 'jquery-migrate' );
+
+			return;
+		}
 
 		/**
 		 * Filter to move jQuery to the footer.
@@ -58,11 +78,27 @@ class ThemeEnqueueJqueryController extends Controller {
 		$move_jquery = apply_filters( 'enqueues_load_jquery_in_footer', true );
 
 		if ( ! $move_jquery ) {
-			return;
+			// Continue to allow strategy filters even when footer placement is disabled.
+		} else {
+			wp_scripts()->add_data( 'jquery', 'group', 1 );
+			wp_scripts()->add_data( 'jquery-core', 'group', 1 );
+			wp_scripts()->add_data( 'jquery-migrate', 'group', 1 );
 		}
 
-		wp_scripts()->add_data( 'jquery', 'group', 1 );
-		wp_scripts()->add_data( 'jquery-core', 'group', 1 );
-		wp_scripts()->add_data( 'jquery-migrate', 'group', 1 );
+		/**
+		 * Filter to set a jQuery loading strategy.
+		 *
+		 * Supports 'defer' or 'async'. Any other value disables strategy changes.
+		 * Default '' (no strategy override).
+		 *
+		 * @param string $strategy Desired loading strategy.
+		 */
+		$strategy = apply_filters( 'enqueues_jquery_loading_strategy', '' );
+
+		if ( in_array( $strategy, [ 'defer', 'async' ], true ) ) {
+			wp_scripts()->add_data( 'jquery', 'strategy', $strategy );
+			wp_scripts()->add_data( 'jquery-core', 'strategy', $strategy );
+			wp_scripts()->add_data( 'jquery-migrate', 'strategy', $strategy );
+		}
 	}
 }
