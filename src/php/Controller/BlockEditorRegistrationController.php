@@ -44,6 +44,10 @@ namespace Enqueues\Controller;
 use WP_Block_Type_Registry;
 use Enqueues\Base\Main\Controller;
 use function Enqueues\asset_find_file_path;
+use function Enqueues\enqueues_cache_key;
+use function Enqueues\get_cache_ttl;
+use function Enqueues\is_cache_enabled;
+use function Enqueues\is_request_memo_enabled;
 use function Enqueues\get_encoded_svg_icon;
 use function Enqueues\is_local;
 use function Enqueues\get_translation_domain;
@@ -95,6 +99,33 @@ class BlockEditorRegistrationController extends Controller {
 		'dynamic' => [],
 		'static'  => [],
 	];
+
+	/**
+	 * Per-request memo of computed block asset versions, keyed by block slug.
+	 *
+	 * The `block_type_metadata` and `block_type_metadata_settings` filters both run
+	 * get_block_asset_version() for the same block during registration, so without this each
+	 * block's filemtime()/asset lookup storm would run twice. Request-scoped, so it cannot go stale.
+	 *
+	 * @var array<string, string|int>
+	 */
+	private $asset_version_cache = [];
+
+	/**
+	 * Cross-request (O2) block asset-version map loaded from the object cache, keyed by block slug.
+	 *
+	 * Null until first loaded this request.
+	 *
+	 * @var array<string, string|int>|null
+	 */
+	private $persistent_version_map = null;
+
+	/**
+	 * Whether a fresh block version was computed this request (so the persistent map needs saving).
+	 *
+	 * @var bool
+	 */
+	private $version_map_dirty = false;
 
 	/**
 	 * Register hooks and initialize properties.
@@ -217,6 +248,25 @@ class BlockEditorRegistrationController extends Controller {
 	 * @return string|int
 	 */
 	private function get_block_asset_version( string $block_slug, array $metadata ): string|int {
+
+		$use_memo = is_request_memo_enabled();
+
+		// O1: return the version computed earlier this request for the same block, if any.
+		if ( $use_memo && array_key_exists( $block_slug, $this->asset_version_cache ) ) {
+			return $this->asset_version_cache[ $block_slug ];
+		}
+
+		// O2: serve from the cross-request map (one object-cache read covers every block) if enabled.
+		if ( is_cache_enabled() ) {
+			$map = $this->load_persistent_version_map();
+			if ( array_key_exists( $block_slug, $map ) ) {
+				if ( $use_memo ) {
+					$this->asset_version_cache[ $block_slug ] = $map[ $block_slug ];
+				}
+				return $map[ $block_slug ];
+			}
+		}
+
 		$directory                  = get_template_directory();
 		$block_editor_dist_dir_path = ltrim( get_block_editor_dist_dir(), '/' );
 		$asset_keys                 = [ 'style', 'editorStyle', 'viewStyle', 'script', 'editorScript', 'viewScript' ];
@@ -262,11 +312,37 @@ class BlockEditorRegistrationController extends Controller {
 			}
 		}
 
-		if ( empty( $version_parts ) ) {
-			return 0;
+		$version = empty( $version_parts ) ? 0 : md5( implode( '|', $version_parts ) );
+
+		if ( $use_memo ) {
+			$this->asset_version_cache[ $block_slug ] = $version;
 		}
 
-		return md5( implode( '|', $version_parts ) );
+		// Accumulate freshly-computed versions for the persistent (O2) map.
+		if ( is_cache_enabled() ) {
+			$this->load_persistent_version_map();
+			$this->persistent_version_map[ $block_slug ] = $version;
+			$this->version_map_dirty                     = true;
+		}
+
+		return $version;
+	}
+
+	/**
+	 * Load the cross-request (O2) block version map from the object cache, once per request.
+	 *
+	 * Keyed by the build signature so a deploy/rebuild (or a manual flush) invalidates it.
+	 *
+	 * @return array<string, string|int>
+	 */
+	private function load_persistent_version_map(): array {
+
+		if ( null === $this->persistent_version_map ) {
+			$cached                       = get_transient( enqueues_cache_key( 'block_version_map' ) );
+			$this->persistent_version_map = is_array( $cached ) ? $cached : [];
+		}
+
+		return $this->persistent_version_map;
 	}
 
 	/**
@@ -375,6 +451,11 @@ class BlockEditorRegistrationController extends Controller {
 
 			// Track dynamic blocks for CLS prevention.
 			$this->blocks[ $is_dynamic ? 'dynamic' : 'static' ][ $full_name ] = $handles;
+		}
+
+		// Persist the O2 block version map if any fresh versions were computed this request.
+		if ( is_cache_enabled() && $this->version_map_dirty ) {
+			set_transient( enqueues_cache_key( 'block_version_map' ), $this->persistent_version_map, get_cache_ttl() );
 		}
 	}
 

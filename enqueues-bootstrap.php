@@ -52,6 +52,7 @@ function enqueues_initialize_controllers( $context = 'default' ) {
 		apply_filters( 'enqueues_load_controller', true, 'ThemeEnqueueJqueryController', $context ) ? new \Enqueues\Controller\ThemeEnqueueJqueryController() : null,
 		apply_filters( 'enqueues_load_controller', true, 'ThemeInlineAssetController', $context ) ? new \Enqueues\Controller\ThemeInlineAssetController() : null,
 		apply_filters( 'enqueues_load_controller', true, 'BlockEditorRegistrationController', $context ) ? new \Enqueues\Controller\BlockEditorRegistrationController() : null,
+		apply_filters( 'enqueues_load_controller', true, 'SettingsController', $context ) ? new \Enqueues\Controller\SettingsController() : null,
 	];
 
 	// Initialize the Enqueues application.

@@ -12,6 +12,7 @@ namespace Enqueues\Library;
 use RecursiveIteratorIterator;
 use RecursiveDirectoryIterator;
 use function Enqueues\asset_find_file_path;
+use function Enqueues\enqueues_cache_key;
 use function Enqueues\get_cache_ttl;
 use function Enqueues\get_page_type;
 use function Enqueues\is_cache_enabled;
@@ -461,8 +462,10 @@ class EnqueueAssets {
 	 * Get template files from the theme directory.
 	 *
 	 * Caching Strategy:
-	 * - Results are cached for 24 hours to avoid repeated file system access.
-	 * - The cache key is static (`enqueues_theme_template_files`) because the content doesn't change frequently.
+	 * - Results are cached for the configured TTL to avoid repeated file system access.
+	 * - The cache key is namespaced by the build signature so a deploy/rebuild invalidates it
+	 *   automatically (the previous static key persisted stale across deploys on persistent
+	 *   object caches). A theme switch also changes the signature, busting it.
 	 * - This reduces I/O operations and improves page load performance.
 	 *
 	 * @param string $theme_directory The path to the theme directory.
@@ -471,9 +474,10 @@ class EnqueueAssets {
 	 */
 	protected function get_theme_template_files( string $theme_directory ): array {
 
-		// Try to get the cached value first.
-		$cache_key      = 'enqueues_theme_template_files';
-		$template_files = is_cache_enabled() ? get_transient( $cache_key ) : false;
+		// Try to get the cached value first (skip the build-signature work entirely when off).
+		$use_cache      = is_cache_enabled();
+		$cache_key      = $use_cache ? enqueues_cache_key( 'theme_template_files' ) : '';
+		$template_files = $use_cache ? get_transient( $cache_key ) : false;
 		if ( $template_files ) {
 			return $template_files;
 		}
@@ -521,8 +525,8 @@ class EnqueueAssets {
 			}
 		}
 
-		// Cache the results for 24 hours.
-		if ( is_cache_enabled() ) {
+		// Cache the results for the configured TTL.
+		if ( $use_cache ) {
 			set_transient( $cache_key, $template_files, get_cache_ttl() );
 		}
 
@@ -533,8 +537,10 @@ class EnqueueAssets {
 	 * Get asset files from the theme directory corresponding to known page types and templates.
 	 *
 	 * Caching Strategy:
-	 * - Results are cached for 24 hours.
-	 * - A unique cache key is generated using the MD5 hash of the known files array to ensure the cache key is unique to the combination of page types and templates.
+	 * - Results are cached for the configured TTL.
+	 * - The cache key combines the build signature with an MD5 of the known files array, so it is
+	 *   unique to the combination of page types and templates AND invalidates on every deploy/
+	 *   rebuild (a new build adding or removing an asset file changes the signature).
 	 *
 	 * @param string $theme_directory The path to the theme directory.
 	 * @param array  $known_files     Array of known page types and template filenames.
@@ -542,9 +548,10 @@ class EnqueueAssets {
 	 */
 	protected function get_enqueue_asset_files( string $theme_directory, array $known_files ): array {
 
-		// Cache key based on known files for uniqueness.
-		$cache_key           = 'enqueues_asset_files_' . md5( wp_json_encode( $known_files ) );
-		$enqueue_asset_files = is_cache_enabled() ? get_transient( $cache_key ) : false;
+		// Cache key based on the build signature and the known files for uniqueness.
+		$use_cache           = is_cache_enabled();
+		$cache_key           = $use_cache ? enqueues_cache_key( 'asset_files_' . md5( wp_json_encode( $known_files ) ) ) : '';
+		$enqueue_asset_files = $use_cache ? get_transient( $cache_key ) : false;
 		if ( $enqueue_asset_files ) {
 			return $enqueue_asset_files;
 		}
@@ -576,8 +583,8 @@ class EnqueueAssets {
 			}
 		}
 
-		// Cache the results for 24 hours.
-		if ( is_cache_enabled() ) {
+		// Cache the results for the configured TTL.
+		if ( $use_cache ) {
 			set_transient( $cache_key, $enqueue_asset_files, get_cache_ttl() );
 		}
 

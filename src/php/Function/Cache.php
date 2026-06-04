@@ -10,20 +10,103 @@
 namespace Enqueues;
 
 /**
+ * Returns the Enqueues settings array (from the Settings -> Enqueues page), memoised per request.
+ *
+ * @return array{request_memo: bool, persistent_cache: bool, cache_ttl: int}
+ */
+function enqueues_get_settings(): array {
+
+	static $settings = null;
+
+	if ( null !== $settings ) {
+		return $settings;
+	}
+
+	$defaults = [
+		'request_memo'     => true,
+		'persistent_cache' => false,
+		'cache_ttl'        => DAY_IN_SECONDS,
+	];
+
+	$stored   = get_option( 'enqueues_settings', [] );
+	$settings = is_array( $stored ) ? array_merge( $defaults, $stored ) : $defaults;
+
+	return $settings;
+}
+
+/**
+ * Returns a single Enqueues setting value.
+ *
+ * @param string $key           Setting key.
+ * @param mixed  $default_value Default if the key is absent.
+ *
+ * @return mixed
+ */
+function enqueues_setting( string $key, $default_value = null ) {
+	$settings = enqueues_get_settings();
+
+	return array_key_exists( $key, $settings ) ? $settings[ $key ] : $default_value;
+}
+
+/**
  * Determines whether caching is enabled for asset loading.
  *
  * Caching helps to improve performance by avoiding repetitive filesystem operations such as checking file existence.
- * It is enabled based on the `ENQUEUES_CACHE_ENABLED` constant or through the 'enqueues_is_cache_enabled' filter.
+ * It is enabled based on the Settings -> Enqueues page (`persistent_cache`), the
+ * `ENQUEUES_CACHE_ENABLED` constant (which overrides the setting), and the
+ * 'enqueues_is_cache_enabled' filter (which has the final say).
  *
  * @return bool True if caching is enabled, false otherwise.
  */
 function is_cache_enabled(): bool {
+
+	static $enabled = null;
+
+	if ( null !== $enabled ) {
+		return $enabled;
+	}
+
+	// Precedence: an explicit ENQUEUES_CACHE_ENABLED constant overrides the admin setting; the
+	// 'enqueues_is_cache_enabled' filter always has the final say.
+	$default = defined( 'ENQUEUES_CACHE_ENABLED' ) ? (bool) ENQUEUES_CACHE_ENABLED : (bool) enqueues_setting( 'persistent_cache', false );
+
 	/**
 	 * Filters whether caching is enabled in the Enqueues plugin.
 	 *
 	 * @param bool $is_cache_enabled True if caching is enabled, false otherwise.
 	 */
-	return (bool) apply_filters( 'enqueues_is_cache_enabled', defined( 'ENQUEUES_CACHE_ENABLED' ) && ENQUEUES_CACHE_ENABLED );
+	$enabled = (bool) apply_filters( 'enqueues_is_cache_enabled', $default );
+
+	return $enabled;
+}
+
+/**
+ * Determines whether request-level memoisation (O1) is enabled.
+ *
+ * This memo is in-process only (it dies with the request), so it cannot serve stale data and is on
+ * by default. Controlled by the Settings -> Enqueues page (`request_memo`), overridable by the
+ * ENQUEUES_REQUEST_MEMO_ENABLED constant and the 'enqueues_is_request_memo_enabled' filter.
+ *
+ * @return bool True if request memoisation is enabled.
+ */
+function is_request_memo_enabled(): bool {
+
+	static $enabled = null;
+
+	if ( null !== $enabled ) {
+		return $enabled;
+	}
+
+	$default = defined( 'ENQUEUES_REQUEST_MEMO_ENABLED' ) ? (bool) ENQUEUES_REQUEST_MEMO_ENABLED : (bool) enqueues_setting( 'request_memo', true );
+
+	/**
+	 * Filters whether request-level memoisation is enabled.
+	 *
+	 * @param bool $enabled True if the request memo is enabled.
+	 */
+	$enabled = (bool) apply_filters( 'enqueues_is_request_memo_enabled', $default );
+
+	return $enabled;
 }
 
 /**
@@ -35,10 +118,123 @@ function is_cache_enabled(): bool {
  * @return int The TTL in seconds. Defaults to 1 day (DAY_IN_SECONDS).
  */
 function get_cache_ttl(): int {
+
+	$default = defined( 'ENQUEUES_CACHE_TTL' ) ? (int) ENQUEUES_CACHE_TTL : (int) enqueues_setting( 'cache_ttl', DAY_IN_SECONDS );
+
 	/**
 	 * Filters the cache TTL (time-to-live) value.
 	 *
 	 * @param int $cache_ttl The TTL in seconds. Defaults to 1 day (DAY_IN_SECONDS).
 	 */
-	return (int) apply_filters( 'enqueues_cache_ttl', defined( 'ENQUEUES_CACHE_TTL' ) ? ENQUEUES_CACHE_TTL : DAY_IN_SECONDS );
+	return (int) apply_filters( 'enqueues_cache_ttl', $default );
+}
+
+/**
+ * Returns a short signature that changes whenever the theme's compiled assets change.
+ *
+ * Every persistent cache entry is namespaced with this signature, so a deploy/rebuild that changes
+ * any compiled asset invalidates the affected Enqueues caches without enumerating stored entries.
+ * Computed once per request and memoised.
+ *
+ * The signature is a fingerprint of the content hashes in every compiled `.asset.php` (the theme JS
+ * dir plus each block-editor block), so it moves on any JS/asset change -- including a block-only
+ * deploy that leaves the main bundle untouched. Known limitation: a change that adds NO compiled
+ * asset (a new template .php, or a CSS-only change with no corresponding .asset.php) will not move
+ * the signature. For guaranteed invalidation on every deploy, flush via Settings -> Enqueues (or
+ * call flush_enqueues_cache()) at deploy time, or override this with a deploy hash / git SHA via the
+ * `enqueues_build_signature` filter.
+ *
+ * @return string A short hash representing the current build.
+ */
+function get_enqueues_build_signature(): string {
+
+	static $signature = null;
+
+	if ( null !== $signature ) {
+		return $signature;
+	}
+
+	$directory = get_template_directory();
+	$parts     = [];
+
+	// Build a fingerprint from the CONTENT hashes baked into every compiled .asset.php across the
+	// theme JS dir AND the block-editor blocks tree. Each entry's 'version' is a content hash that
+	// webpack rewrites whenever that entry's source changes, so this signature moves on ANY asset
+	// change -- including a block-only deploy that leaves the main bundle byte-identical (the case a
+	// main-only signature missed and served a stale block ?ver). Content hashes are also immune to
+	// the git-checkout "mtime not bumped for unchanged files" problem.
+	$js_dir         = trim( (string) apply_filters( 'enqueues_theme_js_src_dir', 'dist/js' ), '/' );
+	$block_dist_dir = trim( get_block_editor_dist_dir(), '/' );
+
+	$globs = [
+		"{$directory}/{$js_dir}/*.asset.php",
+		"{$directory}/{$block_dist_dir}/blocks/*/*.asset.php",
+	];
+
+	foreach ( $globs as $pattern ) {
+		$files = glob( $pattern );
+		if ( ! is_array( $files ) ) {
+			continue;
+		}
+		sort( $files );
+		foreach ( $files as $file ) {
+			$asset    = include $file;
+			$fragment = ( is_array( $asset ) && ! empty( $asset['version'] ) ) ? (string) $asset['version'] : (string) filemtime( $file );
+			$parts[]  = basename( dirname( $file ) ) . '/' . basename( $file ) . ':' . $fragment;
+		}
+	}
+
+	// Fall back to the theme version when no build assets are present (e.g. a fresh checkout before
+	// the first build). Note: a template .php added without any new compiled asset will not move the
+	// signature; flush manually or set the enqueues_build_signature filter to a deploy hash for that.
+	$source = empty( $parts ) ? 'v:' . (string) wp_get_theme()->get( 'Version' ) : implode( '|', $parts );
+
+	// Fold in the manual flush salt (see flush_enqueues_cache()).
+	$source .= '|' . (string) get_option( 'enqueues_cache_salt', '' );
+
+	/**
+	 * Filters the Enqueues build signature used to namespace persistent caches.
+	 *
+	 * Override with a deploy hash / git SHA on sites where the main asset mtime does not
+	 * reliably change on every deploy.
+	 *
+	 * @param string $signature The default signature (md5 of the build source).
+	 */
+	$signature = (string) apply_filters( 'enqueues_build_signature', md5( $source ) );
+
+	return $signature;
+}
+
+/**
+ * Builds a namespaced, length-safe cache key for an Enqueues persistent cache entry.
+ *
+ * The build signature is folded in so that every deploy/rebuild produces fresh keys, giving
+ * automatic cache invalidation. The result is md5-hashed to stay within the transient key length
+ * limit regardless of the identifier passed in.
+ *
+ * @param string $key A stable identifier for the cached value.
+ *
+ * @return string A transient-safe cache key.
+ */
+function enqueues_cache_key( string $key ): string {
+	return 'enq_' . md5( get_enqueues_build_signature() . '|' . $key );
+}
+
+/**
+ * Flushes Enqueues persistent caches by rotating the cache salt.
+ *
+ * Because cache keys are namespaced by the build signature (which includes this salt), rotating
+ * the salt orphans all existing entries immediately; they expire naturally via their TTL. This
+ * avoids having to enumerate transients, which is not portable across object cache backends.
+ *
+ * @return void
+ */
+function flush_enqueues_cache(): void {
+
+	update_option( 'enqueues_cache_salt', (string) time(), true );
+
+	/**
+	 * Fires after the Enqueues caches have been flushed.
+	 */
+	do_action( 'enqueues_cache_flushed' );
 }

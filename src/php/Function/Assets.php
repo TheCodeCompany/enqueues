@@ -17,9 +17,11 @@ namespace Enqueues;
  * Defaults to the theme directory if no specific directory is provided.
  *
  * Caching Strategy:
- * - Caches asset file paths to avoid repeated file existence checks on every request.
- * - Cache is keyed based on the relative path and file name.
- * - Cached data is stored for 24 hours and automatically invalidated.
+ * - Results are memoised for the duration of the request, keyed by directory, relative path,
+ *   file name and extension. The resolved path depends only on those inputs plus is_local(),
+ *   all of which are constant within a request, so the memo cannot serve a stale path across
+ *   deploys (the process exits at the end of the request). This collapses the many repeated
+ *   lookups the block and theme asset systems make for the same files into a single stat pass.
  *
  * @param string      $relative_path The path to the file relative to the specified directory.
  * @param string      $file_name     Name of the file without the extension.
@@ -36,6 +38,15 @@ function asset_find_file_path( string $relative_path, string $file_name, string 
 
 	$theme_relative_path_and_file_name = trim( $relative_path, '/' ) . '/' . trim( $file_name, '/' );
 
+	// Request-level memoisation (O1). array_key_exists() (not isset) so negative lookups ('') are
+	// cached too, preventing repeated file_exists() calls for assets that do not exist.
+	static $memo = [];
+	$use_memo = is_request_memo_enabled();
+	$memo_key = "{$directory}|{$theme_relative_path_and_file_name}|{$file_ext}";
+	if ( $use_memo && array_key_exists( $memo_key, $memo ) ) {
+		return $memo[ $memo_key ];
+	}
+
 	$minified = "{$directory}/{$theme_relative_path_and_file_name}.min.{$file_ext}";
 	$standard = "{$directory}/{$theme_relative_path_and_file_name}.{$file_ext}";
 
@@ -47,6 +58,10 @@ function asset_find_file_path( string $relative_path, string $file_name, string 
 		$file_path = "/{$theme_relative_path_and_file_name}.min.{$file_ext}";
 	} elseif ( file_exists( $standard ) ) {
 		$file_path = "/{$theme_relative_path_and_file_name}.{$file_ext}";
+	}
+
+	if ( $use_memo ) {
+		$memo[ $memo_key ] = $file_path;
 	}
 
 	return $file_path;
@@ -85,9 +100,10 @@ function display_maybe_missing_local_warning( string $path, string $message ): v
  * development environment. If no source file is found, it falls back to the default file.
  *
  * Caching Strategy:
- * - Caches asset file data to avoid repeated file existence checks and improve performance.
- * - Cache is keyed based on the file name and file extension.
- * - Cached data is stored for 24 hours and automatically invalidated.
+ * - Results are memoised for the duration of the request, keyed by all arguments. The filter
+ *   values this function reads (src/dist directories, extensions) are constant within a request,
+ *   so the arguments fully determine the result. This avoids re-running the file_exists()/
+ *   filemtime()/.asset.php include work when the same asset is requested more than once per page.
  *
  * @param string      $directory            Directory path where the asset is located.
  * @param string      $directory_uri        URI of the directory for web access.
@@ -108,6 +124,14 @@ function get_asset_page_type_file_data(
 	string $file_ext,
 	string $missing_local_warning = 'Run the npm build for the asset files.',
 ): bool|array {
+
+	// Request-level memoisation (O1), keyed by all arguments (see docblock for why this is sound).
+	static $memo = [];
+	$use_memo = is_request_memo_enabled();
+	$memo_key = "{$directory}|{$directory_uri}|{$directory_part}|{$file_name}|{$fallback_file_name}|{$file_ext}";
+	if ( $use_memo && array_key_exists( $memo_key, $memo ) ) {
+		return $memo[ $memo_key ];
+	}
 
 	/**
 	 * Filters the source directory used for locating SCSS/SASS/CSS and JS files.
@@ -164,6 +188,10 @@ function get_asset_page_type_file_data(
 			$data['asset_php']  = file_exists( $asset_php_path ) ? include $asset_php_path : [];
 		}
 
+		if ( $use_memo ) {
+			$memo[ $memo_key ] = $data;
+		}
+
 		return $data;
 	}
 
@@ -190,7 +218,15 @@ function get_asset_page_type_file_data(
 			$data['asset_php']  = file_exists( $asset_php_path ) ? include $asset_php_path : [];
 		}
 
+		if ( $use_memo ) {
+			$memo[ $memo_key ] = $data;
+		}
+
 		return $data;
+	}
+
+	if ( $use_memo ) {
+		$memo[ $memo_key ] = false;
 	}
 
 	return false;
