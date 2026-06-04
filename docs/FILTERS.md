@@ -95,10 +95,15 @@ This page lists **all** filters and actions available in the Enqueues MU Plugin,
 
 ## Caching & Performance
 
+See [Performance: Asset Caching & the Settings Page](PERFORMANCE.md) for the full guide — the O1 request memo, the O2 persistent cache, the **Settings → Enqueues** page, the build signature, and measuring impact in production.
+
 | Filter/Action                      | Summary                                         | Docs                                         |
 |:-----------------------------------|:------------------------------------------------|:---------------------------------------------|
-| `enqueues_is_cache_enabled`        | Filter whether caching is enabled.               | [Caching](THEME-ASSETS.md#caching)           |
-| `enqueues_cache_ttl`               | Filter the cache time-to-live.                   | [Caching](THEME-ASSETS.md#caching)           |
+| `enqueues_is_cache_enabled`        | Final say on whether the persistent cache (O2) is enabled. | [Performance](PERFORMANCE.md#constants-filters--functions) |
+| `enqueues_is_request_memo_enabled` | Final say on whether the request memo (O1) is enabled.     | [Performance](PERFORMANCE.md#constants-filters--functions) |
+| `enqueues_cache_ttl`               | Filter the persistent cache time-to-live (seconds). | [Performance](PERFORMANCE.md#constants-filters--functions) |
+| `enqueues_build_signature`         | Override the build signature (e.g. return a deploy SHA). | [Performance](PERFORMANCE.md#the-build-signature--invalidation) |
+| `enqueues_cache_flushed`           | Action fired after `flush_enqueues_cache()` completes. | [Performance](PERFORMANCE.md#constants-filters--functions) |
 
 ---
 

@@ -42,6 +42,7 @@ Enqueues MU Plugin is a modern, flexible system for automating and customizing a
 - [Block Editor Integration](docs/BLOCK-EDITOR.md): Register custom blocks, block categories, and block editor plugins with fine-grained control.
 - [Webpack Automation (Optional)](docs/WEBPACK.md): Dynamically generate Webpack entries, copy assets, and extract dependencies for a seamless build process. **All Webpack features are optional and can be used independently.**
 - [Inline Asset Registration](docs/INLINE-ASSETS.md): Easily add critical CSS/JS directly to your page head or footer.
+- [Performance & Caching](docs/PERFORMANCE.md): Toggle in-process (O1) and persistent (O2) asset caching from a Settings → Enqueues page, with content-hash build-signature invalidation.
 - [Extensive Filters & Extension Points](docs/THEME-ASSETS.md#filters-for-theme-asset-loading): Customize every aspect of asset loading and block integration.
 - [Troubleshooting & Advanced Usage](docs/TROUBLESHOOTING.md): Solutions for common issues and advanced scenarios.
 
@@ -75,6 +76,7 @@ Enqueues MU Plugin is a modern, flexible system for automating and customizing a
 - [Block Editor Features →](docs/BLOCK-EDITOR.md)
 - [Webpack Automation →](docs/WEBPACK.md)
 - [Inline Asset Registration →](docs/INLINE-ASSETS.md)
+- [Performance & Caching →](docs/PERFORMANCE.md)
 - [All Filters & Usage →](docs/THEME-ASSETS.md#filters-for-theme-asset-loading)
 - [Troubleshooting →](docs/TROUBLESHOOTING.md)
 

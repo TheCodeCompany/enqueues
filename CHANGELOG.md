@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.0] - 2026-06-04
+
+### Added
+- **FEATURE**: Asset caching with admin toggles and a Settings → Enqueues page
+  - **Request memo (O1)** — in-process memoisation of `asset_find_file_path()`, `get_asset_page_type_file_data()`, and per-block `get_block_asset_version()`, removing duplicate filesystem lookups within a request (including the 2×-per-block version computation across the `block_type_metadata` / `block_type_metadata_settings` filters). On by default; cannot serve stale data.
+  - **Persistent cache (O2)** — caches the theme directory scans and the block asset-version map across requests in the object cache, keyed by the build signature. Off by default.
+  - **Settings → Enqueues** admin page (`SettingsController`) with toggles for both layers, a TTL field (minimum 1 hour), a manual *Flush cache* button, and an effective-state status panel.
+  - **Build signature** (`get_enqueues_build_signature()`) — a content-hash fingerprint of every compiled `.asset.php` (theme JS dir + each block) that namespaces persistent entries, so a deploy invalidates them automatically, **including block-only deploys**; immune to the git-checkout "mtime not bumped" pitfall.
+  - New functions: `flush_enqueues_cache()`, `enqueues_cache_key()`, `is_request_memo_enabled()`, `enqueues_get_settings()`, `enqueues_setting()`.
+  - New filters: `enqueues_is_request_memo_enabled`, `enqueues_build_signature`; new action `enqueues_cache_flushed`; new constant `ENQUEUES_REQUEST_MEMO_ENABLED`.
+  - The persistent cache key is computed lazily, so there is no build-signature cost when caching is off.
+  - See [docs/PERFORMANCE.md](docs/PERFORMANCE.md), including guidance on measuring impact in production without New Relic.
+
+### Fixed
+- Corrected the `asset_find_file_path()` and `get_asset_page_type_file_data()` docblocks, which described request caching the functions did not previously perform.
+
 ## [1.3.7] - 2026-05-19
 
 ### Added
