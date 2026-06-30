@@ -47,6 +47,8 @@ use function Enqueues\asset_find_file_path;
 use function Enqueues\enqueues_cache_key;
 use function Enqueues\get_cache_ttl;
 use function Enqueues\is_cache_enabled;
+use function Enqueues\is_profile_enabled;
+use function Enqueues\enqueues_profile_record;
 use function Enqueues\is_request_memo_enabled;
 use function Enqueues\get_encoded_svg_icon;
 use function Enqueues\is_local;
@@ -250,6 +252,7 @@ class BlockEditorRegistrationController extends Controller {
 	private function get_block_asset_version( string $block_slug, array $metadata ): string|int {
 
 		$use_memo = is_request_memo_enabled();
+		$profile  = is_profile_enabled();
 
 		// O1: return the version computed earlier this request for the same block, if any.
 		if ( $use_memo && array_key_exists( $block_slug, $this->asset_version_cache ) ) {
@@ -258,14 +261,21 @@ class BlockEditorRegistrationController extends Controller {
 
 		// O2: serve from the cross-request map (one object-cache read covers every block) if enabled.
 		if ( is_cache_enabled() ) {
-			$map = $this->load_persistent_version_map();
+			$read_t0 = $profile ? hrtime( true ) : 0;
+			$map     = $this->load_persistent_version_map();
 			if ( array_key_exists( $block_slug, $map ) ) {
 				if ( $use_memo ) {
 					$this->asset_version_cache[ $block_slug ] = $map[ $block_slug ];
 				}
+				if ( $profile ) {
+					enqueues_profile_record( 'block_version_map', 'hit', (int) ( hrtime( true ) - $read_t0 ) );
+				}
 				return $map[ $block_slug ];
 			}
 		}
+
+		// Profiler: time the per-block version compute (the filemtime storm) — the without-cache cost.
+		$compute_t0 = $profile ? hrtime( true ) : 0;
 
 		$directory                  = get_template_directory();
 		$block_editor_dist_dir_path = ltrim( get_block_editor_dist_dir(), '/' );
@@ -313,6 +323,10 @@ class BlockEditorRegistrationController extends Controller {
 		}
 
 		$version = empty( $version_parts ) ? 0 : md5( implode( '|', $version_parts ) );
+
+		if ( $profile ) {
+			enqueues_profile_record( 'block_version_map', 'miss', (int) ( hrtime( true ) - $compute_t0 ) );
+		}
 
 		if ( $use_memo ) {
 			$this->asset_version_cache[ $block_slug ] = $version;

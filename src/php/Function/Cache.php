@@ -26,6 +26,7 @@ function enqueues_get_settings(): array {
 		'request_memo'     => true,
 		'persistent_cache' => false,
 		'cache_ttl'        => DAY_IN_SECONDS,
+		'profile'          => false,
 	];
 
 	$stored   = get_option( 'enqueues_settings', [] );
@@ -237,4 +238,149 @@ function flush_enqueues_cache(): void {
 	 * Fires after the Enqueues caches have been flushed.
 	 */
 	do_action( 'enqueues_cache_flushed' );
+}
+
+/**
+ * Determines whether the cache profiler (observability layer) is enabled.
+ *
+ * Default OFF and zero-cost when off (a single static-memoised bool). When on, the cached functions
+ * record per-request hit/miss timings that are folded into cross-request stats at shutdown and shown
+ * on Settings -> Enqueues. The profiler quantifies the cache's value via the runtime counterfactual:
+ * a HIT measures the with-cache cost (the cache read), a MISS measures the without-cache cost (the
+ * filesystem compute the previous system paid every request). Overridable by the
+ * ENQUEUES_PROFILE_ENABLED constant and the 'enqueues_is_profile_enabled' filter.
+ *
+ * @return bool True if profiling is enabled.
+ */
+function is_profile_enabled(): bool {
+
+	static $enabled = null;
+
+	if ( null !== $enabled ) {
+		return $enabled;
+	}
+
+	$default = defined( 'ENQUEUES_PROFILE_ENABLED' ) ? (bool) ENQUEUES_PROFILE_ENABLED : (bool) enqueues_setting( 'profile', false );
+
+	/**
+	 * Filters whether the Enqueues cache profiler is enabled.
+	 *
+	 * @param bool $enabled True if the profiler is enabled.
+	 */
+	$enabled = (bool) apply_filters( 'enqueues_is_profile_enabled', $default );
+
+	return $enabled;
+}
+
+/**
+ * Records one cache-layer timing sample into the per-request profiler accumulator.
+ *
+ * No-op-cheap when profiling is off (callers guard with is_profile_enabled() so this is not even
+ * called). Buckets correspond to the cached operations, e.g. 'theme_template_files'.
+ *
+ * @param string $bucket The cached operation the sample belongs to.
+ * @param string $kind   'hit' (served from cache) or 'miss' (computed = the without-cache cost).
+ * @param int    $ns     Elapsed nanoseconds (a hrtime(true) delta).
+ *
+ * @return void
+ */
+function enqueues_profile_record( string $bucket, string $kind, int $ns ): void {
+
+	if ( ! isset( $GLOBALS['enqueues_profile'] ) ) {
+		$GLOBALS['enqueues_profile'] = [];
+	}
+
+	if ( ! isset( $GLOBALS['enqueues_profile'][ $bucket ] ) ) {
+		$GLOBALS['enqueues_profile'][ $bucket ] = [
+			'hit_n'   => 0,
+			'hit_ns'  => 0,
+			'miss_n'  => 0,
+			'miss_ns' => 0,
+		];
+	}
+
+	$ref = &$GLOBALS['enqueues_profile'][ $bucket ];
+
+	if ( 'hit' === $kind ) {
+		++$ref['hit_n'];
+		$ref['hit_ns'] += $ns;
+	} else {
+		++$ref['miss_n'];
+		$ref['miss_ns'] += $ns;
+	}
+}
+
+/**
+ * Returns the per-request profiler accumulator (empty if nothing was recorded this request).
+ *
+ * @return array<string, array{hit_n:int, hit_ns:int, miss_n:int, miss_ns:int}>
+ */
+function enqueues_profile_request(): array {
+	return isset( $GLOBALS['enqueues_profile'] ) && is_array( $GLOBALS['enqueues_profile'] ) ? $GLOBALS['enqueues_profile'] : [];
+}
+
+/**
+ * Folds the current request's profiler accumulator into the persisted stats + ring buffer.
+ *
+ * Hooked on 'shutdown' only when profiling is on. Writes a single autoload=off option once per
+ * profiled request (never on the hot path), keeping the most recent ENQUEUES_PROFILE_LOG_MAX (20)
+ * per-request records plus cumulative per-bucket totals.
+ *
+ * @return void
+ */
+function enqueues_profile_persist(): void {
+
+	$request = enqueues_profile_request();
+
+	if ( empty( $request ) ) {
+		return;
+	}
+
+	$data  = get_option( 'enqueues_profile_data', [] );
+	$data  = is_array( $data ) ? $data : [];
+	$stats = isset( $data['stats'] ) && is_array( $data['stats'] ) ? $data['stats'] : [];
+	$log   = isset( $data['log'] ) && is_array( $data['log'] ) ? $data['log'] : [];
+
+	$req_hit_ns  = 0;
+	$req_miss_ns = 0;
+
+	foreach ( $request as $bucket => $sample ) {
+		if ( ! isset( $stats[ $bucket ] ) ) {
+			$stats[ $bucket ] = [
+				'hit_n'   => 0,
+				'hit_ns'  => 0,
+				'miss_n'  => 0,
+				'miss_ns' => 0,
+			];
+		}
+		$stats[ $bucket ]['hit_n']   += $sample['hit_n'];
+		$stats[ $bucket ]['hit_ns']  += $sample['hit_ns'];
+		$stats[ $bucket ]['miss_n']  += $sample['miss_n'];
+		$stats[ $bucket ]['miss_ns'] += $sample['miss_ns'];
+		$req_hit_ns                  += $sample['hit_ns'];
+		$req_miss_ns                 += $sample['miss_ns'];
+	}
+
+	$log[] = [
+		't'       => time(),
+		'url'     => isset( $_SERVER['REQUEST_URI'] ) ? esc_url_raw( wp_unslash( $_SERVER['REQUEST_URI'] ) ) : '', // phpcs:ignore
+		'hit_ns'  => $req_hit_ns,
+		'miss_ns' => $req_miss_ns,
+		'buckets' => $request,
+	];
+
+	if ( count( $log ) > 20 ) {
+		$log = array_slice( $log, -20 );
+	}
+
+	update_option( 'enqueues_profile_data', [ 'stats' => $stats, 'log' => $log ], false );
+}
+
+/**
+ * Clears the persisted profiler stats and ring buffer.
+ *
+ * @return void
+ */
+function enqueues_profile_reset(): void {
+	delete_option( 'enqueues_profile_data' );
 }

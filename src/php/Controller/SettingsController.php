@@ -18,7 +18,9 @@ use function Enqueues\flush_enqueues_cache;
 use function Enqueues\get_cache_ttl;
 use function Enqueues\get_enqueues_build_signature;
 use function Enqueues\is_cache_enabled;
+use function Enqueues\is_profile_enabled;
 use function Enqueues\is_request_memo_enabled;
+use function Enqueues\enqueues_profile_reset;
 
 /**
  * Registers the Settings -> Enqueues page and persists the framework's performance settings.
@@ -50,11 +52,17 @@ class SettingsController extends Controller {
 		add_action( 'admin_menu', [ $this, 'add_settings_page' ] );
 		add_action( 'admin_init', [ $this, 'register_settings' ] );
 		add_action( 'admin_post_enqueues_flush_cache', [ $this, 'handle_flush_cache' ] );
+		add_action( 'admin_post_enqueues_reset_profile', [ $this, 'handle_reset_profile' ] );
 
 		// Auto-invalidate the persistent cache on the events WordPress can signal. A git-checkout
 		// deploy does NOT fire these, so the page also documents flushing on deploy.
 		add_action( 'switch_theme', [ $this, 'auto_flush' ] );
 		add_action( 'upgrader_process_complete', [ $this, 'auto_flush' ] );
+
+		// Persist the cache profiler's per-request samples at end of request, while profiling is on.
+		if ( is_profile_enabled() ) {
+			add_action( 'shutdown', '\\Enqueues\\enqueues_profile_persist', 9999 );
+		}
 	}
 
 	/**
@@ -120,6 +128,7 @@ class SettingsController extends Controller {
 			'request_memo'     => ! empty( $input['request_memo'] ),
 			'persistent_cache' => $persistent_cache,
 			'cache_ttl'        => $ttl,
+			'profile'          => ! empty( $input['profile'] ),
 		];
 	}
 
@@ -152,6 +161,25 @@ class SettingsController extends Controller {
 	}
 
 	/**
+	 * Handle the "Reset profiler stats" action.
+	 *
+	 * @return void
+	 */
+	public function handle_reset_profile() {
+
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( esc_html__( 'You do not have permission to do that.', 'enqueues' ) );
+		}
+
+		check_admin_referer( 'enqueues_reset_profile' );
+
+		enqueues_profile_reset();
+
+		wp_safe_redirect( admin_url( 'options-general.php?page=' . self::PAGE ) );
+		exit;
+	}
+
+	/**
 	 * Render the settings page.
 	 *
 	 * @return void
@@ -167,6 +195,7 @@ class SettingsController extends Controller {
 		$cache_on         = ! empty( $settings['persistent_cache'] );
 		$ttl              = (int) ( $settings['cache_ttl'] ?? DAY_IN_SECONDS );
 		$cache_const      = defined( 'ENQUEUES_CACHE_ENABLED' );
+		$profile_on       = ! empty( $settings['profile'] );
 		$flushed          = isset( $_GET['enqueues_flushed'] ); // phpcs:ignore WordPress.Security.NonceVerification
 		?>
 		<div class="wrap">
@@ -213,6 +242,16 @@ class SettingsController extends Controller {
 							<p class="description"><?php esc_html_e( 'How long persistent cache entries live (minimum 1 hour). This also bounds the worst-case staleness window if a deploy is not followed by a flush.', 'enqueues' ); ?></p>
 						</td>
 					</tr>
+					<tr>
+						<th scope="row"><?php esc_html_e( 'Profiler', 'enqueues' ); ?></th>
+						<td>
+							<label>
+								<input type="checkbox" name="<?php echo esc_attr( self::OPTION ); ?>[profile]" value="1" <?php checked( $profile_on ); ?> />
+								<?php esc_html_e( 'Record per-request cache hit/miss timings (quantifies the cache value-add).', 'enqueues' ); ?>
+							</label>
+							<p class="description"><?php esc_html_e( 'Off by default and free when off. When on, each request stores a small timing sample shown in the Cache profiler section below. Turn off in normal production once measured.', 'enqueues' ); ?></p>
+						</td>
+					</tr>
 				</table>
 				<?php submit_button(); ?>
 			</form>
@@ -236,6 +275,108 @@ class SettingsController extends Controller {
 					<tr><td><?php esc_html_e( 'Build signature', 'enqueues' ); ?></td><td><code><?php echo esc_html( get_enqueues_build_signature() ); ?></code></td></tr>
 				</tbody>
 			</table>
+
+			<hr />
+			<h2><?php esc_html_e( 'Cache profiler', 'enqueues' ); ?></h2>
+			<?php
+			$profile_data = get_option( 'enqueues_profile_data', [] );
+			$pstats       = is_array( $profile_data ) && isset( $profile_data['stats'] ) && is_array( $profile_data['stats'] ) ? $profile_data['stats'] : [];
+			$plog         = is_array( $profile_data ) && isset( $profile_data['log'] ) && is_array( $profile_data['log'] ) ? $profile_data['log'] : [];
+			$fmt_us       = static function ( $ns ) {
+				return number_format( ( (float) $ns ) / 1000, 1 ) . ' &micro;s';
+			};
+			if ( ! $profile_on ) :
+				?>
+				<p class="description"><?php esc_html_e( 'Profiler is off. Tick the Profiler box above, Save, then load some pages to collect samples.', 'enqueues' ); ?></p>
+				<?php
+			endif;
+			if ( empty( $pstats ) ) :
+				?>
+				<p class="description"><?php esc_html_e( 'No samples recorded yet.', 'enqueues' ); ?></p>
+				<?php
+			else :
+				$tot_hit_n    = 0;
+				$tot_miss_n   = 0;
+				$tot_saved_ns = 0.0;
+				?>
+				<table class="widefat striped" style="max-width:960px">
+					<thead>
+						<tr>
+							<th><?php esc_html_e( 'Operation', 'enqueues' ); ?></th>
+							<th><?php esc_html_e( 'Hits', 'enqueues' ); ?></th>
+							<th><?php esc_html_e( 'Misses', 'enqueues' ); ?></th>
+							<th><?php esc_html_e( 'Hit rate', 'enqueues' ); ?></th>
+							<th><?php esc_html_e( 'With cache (avg)', 'enqueues' ); ?></th>
+							<th><?php esc_html_e( 'Without cache (avg)', 'enqueues' ); ?></th>
+							<th><?php esc_html_e( 'Saved / hit', 'enqueues' ); ?></th>
+						</tr>
+					</thead>
+					<tbody>
+					<?php foreach ( $pstats as $bucket => $s ) : ?>
+						<?php
+						$hit_n    = (int) ( $s['hit_n'] ?? 0 );
+						$miss_n   = (int) ( $s['miss_n'] ?? 0 );
+						$hit_avg  = $hit_n ? ( (float) $s['hit_ns'] / $hit_n ) : 0.0;
+						$miss_avg = $miss_n ? ( (float) $s['miss_ns'] / $miss_n ) : 0.0;
+						$saved    = $miss_avg - $hit_avg; // Signed: negative means the cache read costs more than the compute on this backend.
+						$rate     = ( $hit_n + $miss_n ) ? ( 100 * $hit_n / ( $hit_n + $miss_n ) ) : 0;
+						$tot_hit_n    += $hit_n;
+						$tot_miss_n   += $miss_n;
+						$tot_saved_ns += $saved * $hit_n;
+						?>
+						<tr>
+							<td><code><?php echo esc_html( $bucket ); ?></code></td>
+							<td><?php echo (int) $hit_n; ?></td>
+							<td><?php echo (int) $miss_n; ?></td>
+							<td><?php echo esc_html( number_format( $rate, 1 ) ); ?>%</td>
+							<td><?php echo wp_kses_post( $fmt_us( $hit_avg ) ); ?></td>
+							<td><?php echo wp_kses_post( $fmt_us( $miss_avg ) ); ?></td>
+							<td><?php echo wp_kses_post( $fmt_us( $saved ) ); ?></td>
+						</tr>
+					<?php endforeach; ?>
+					</tbody>
+					<tfoot>
+						<tr>
+							<th><?php esc_html_e( 'Total', 'enqueues' ); ?></th>
+							<th><?php echo (int) $tot_hit_n; ?></th>
+							<th><?php echo (int) $tot_miss_n; ?></th>
+							<th colspan="3"></th>
+							<th><?php echo esc_html( number_format( $tot_saved_ns / 1e6, 2 ) ); ?> ms <?php esc_html_e( 'saved (total)', 'enqueues' ); ?></th>
+						</tr>
+					</tfoot>
+				</table>
+				<p class="description">
+					<?php esc_html_e( '"Without cache" is the measured filesystem compute (the cost the no-cache system paid every request); "with cache" is the cache read. "Saved / hit" is without minus with — a NEGATIVE value means the cache read costs more than recomputing on this backend (so the cache is a net loss for that operation). Local storage uses DB transients; a production object cache reads faster and shifts these positive.', 'enqueues' ); ?>
+				</p>
+
+				<h3><?php esc_html_e( 'Last requests', 'enqueues' ); ?></h3>
+				<table class="widefat striped" style="max-width:960px">
+					<thead>
+						<tr>
+							<th><?php esc_html_e( 'When (UTC)', 'enqueues' ); ?></th>
+							<th><?php esc_html_e( 'URL', 'enqueues' ); ?></th>
+							<th><?php esc_html_e( 'Cache reads (hits)', 'enqueues' ); ?></th>
+							<th><?php esc_html_e( 'Compute (misses)', 'enqueues' ); ?></th>
+						</tr>
+					</thead>
+					<tbody>
+					<?php foreach ( array_reverse( $plog ) as $row ) : ?>
+						<tr>
+							<td><?php echo esc_html( gmdate( 'H:i:s', (int) ( $row['t'] ?? 0 ) ) ); ?></td>
+							<td><code><?php echo esc_html( $row['url'] ?? '' ); ?></code></td>
+							<td><?php echo wp_kses_post( $fmt_us( $row['hit_ns'] ?? 0 ) ); ?></td>
+							<td><?php echo wp_kses_post( $fmt_us( $row['miss_ns'] ?? 0 ) ); ?></td>
+						</tr>
+					<?php endforeach; ?>
+					</tbody>
+				</table>
+			<?php endif; ?>
+
+			<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" style="margin-top:12px">
+				<input type="hidden" name="action" value="enqueues_reset_profile" />
+				<?php wp_nonce_field( 'enqueues_reset_profile' ); ?>
+				<?php submit_button( __( 'Reset profiler stats', 'enqueues' ), 'secondary', 'submit', false ); ?>
+			</form>
 		</div>
 		<?php
 	}

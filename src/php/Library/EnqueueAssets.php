@@ -17,6 +17,8 @@ use function Enqueues\enqueues_cache_key;
 use function Enqueues\get_cache_ttl;
 use function Enqueues\get_page_type;
 use function Enqueues\is_cache_enabled;
+use function Enqueues\is_profile_enabled;
+use function Enqueues\enqueues_profile_record;
 use function Enqueues\string_slugify;
 
 /**
@@ -475,6 +477,9 @@ class EnqueueAssets {
 	 */
 	protected function get_theme_template_files( string $theme_directory ): array {
 
+		$profile = is_profile_enabled();
+		$read_t0 = $profile ? hrtime( true ) : 0;
+
 		// Try to get the cached value first (skip the build-signature work entirely when off).
 		$use_cache = is_cache_enabled();
 		$cache_key = $use_cache ? enqueues_cache_key( 'theme_template_files' ) : '';
@@ -483,8 +488,14 @@ class EnqueueAssets {
 		// on a hit, so a legitimately empty result is still served from cache rather than falling through
 		// and re-scanning the whole theme tree (and re-writing the transient) on every request.
 		if ( is_array( $cached ) ) {
+			if ( $profile ) {
+				enqueues_profile_record( 'theme_template_files', 'hit', (int) ( hrtime( true ) - $read_t0 ) );
+			}
 			return $cached;
 		}
+
+		// Profiler: time the filesystem scan on its own — the without-cache cost the previous system paid.
+		$compute_t0 = $profile ? hrtime( true ) : 0;
 
 		$template_files = [];
 
@@ -548,6 +559,10 @@ class EnqueueAssets {
 			}
 		}
 
+		if ( $profile ) {
+			enqueues_profile_record( 'theme_template_files', 'miss', (int) ( hrtime( true ) - $compute_t0 ) );
+		}
+
 		// Cache the results for the configured TTL.
 		if ( $use_cache ) {
 			set_transient( $cache_key, $template_files, get_cache_ttl() );
@@ -571,6 +586,9 @@ class EnqueueAssets {
 	 */
 	protected function get_enqueue_asset_files( string $theme_directory, array $known_files ): array {
 
+		$profile = is_profile_enabled();
+		$read_t0 = $profile ? hrtime( true ) : 0;
+
 		// Cache key based on the build signature and the known files for uniqueness.
 		$use_cache = is_cache_enabled();
 		$cache_key = $use_cache ? enqueues_cache_key( 'asset_files_' . md5( wp_json_encode( $known_files ) ) ) : '';
@@ -579,8 +597,14 @@ class EnqueueAssets {
 		// in dist/) is still served from cache instead of re-scanning dist/ and re-writing the transient
 		// on every request.
 		if ( is_array( $cached ) ) {
+			if ( $profile ) {
+				enqueues_profile_record( 'enqueue_asset_files', 'hit', (int) ( hrtime( true ) - $read_t0 ) );
+			}
 			return $cached;
 		}
+
+		// Profiler: time the dist/ file_exists scan on its own — the without-cache cost.
+		$compute_t0 = $profile ? hrtime( true ) : 0;
 
 		$enqueue_asset_files = [];
 
@@ -607,6 +631,10 @@ class EnqueueAssets {
 					}
 				}
 			}
+		}
+
+		if ( $profile ) {
+			enqueues_profile_record( 'enqueue_asset_files', 'miss', (int) ( hrtime( true ) - $compute_t0 ) );
 		}
 
 		// Cache the results for the configured TTL.
