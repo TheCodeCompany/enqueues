@@ -260,6 +260,10 @@ class BlockEditorRegistrationController extends Controller {
 		}
 
 		// O2: serve from the cross-request map (one object-cache read covers every block) if enabled.
+		// Recorded per block: the single real map read happens on the first block (inside
+		// load_persistent_version_map), later blocks are free array_key_exists() lookups, so the per-block
+		// 'with cache' average is the shared read AMORTISED across blocks (read/N). This keeps the bucket
+		// total correct: saved/hit x hit_n = (compute - read/N) x N = compute x N - read = per-request saving.
 		if ( is_cache_enabled() ) {
 			$read_t0 = $profile ? hrtime( true ) : 0;
 			$map     = $this->load_persistent_version_map();

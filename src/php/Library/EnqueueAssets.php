@@ -478,11 +478,13 @@ class EnqueueAssets {
 	protected function get_theme_template_files( string $theme_directory ): array {
 
 		$profile = is_profile_enabled();
-		$read_t0 = $profile ? hrtime( true ) : 0;
 
 		// Try to get the cached value first (skip the build-signature work entirely when off).
 		$use_cache = is_cache_enabled();
 		$cache_key = $use_cache ? enqueues_cache_key( 'theme_template_files' ) : '';
+		// Time ONLY the cache read. The build-signature/key derivation above is shared per-request
+		// framework overhead paid once regardless of bucket, not this operation's with-cache cost.
+		$read_t0   = $profile ? hrtime( true ) : 0;
 		$cached    = $use_cache ? get_transient( $cache_key ) : false;
 		// is_array() (not a truthy check): get_transient() returns false on a miss and the stored array
 		// on a hit, so a legitimately empty result is still served from cache rather than falling through
@@ -587,11 +589,12 @@ class EnqueueAssets {
 	protected function get_enqueue_asset_files( string $theme_directory, array $known_files ): array {
 
 		$profile = is_profile_enabled();
-		$read_t0 = $profile ? hrtime( true ) : 0;
 
 		// Cache key based on the build signature and the known files for uniqueness.
 		$use_cache = is_cache_enabled();
 		$cache_key = $use_cache ? enqueues_cache_key( 'asset_files_' . md5( wp_json_encode( $known_files ) ) ) : '';
+		// Time ONLY the cache read (key derivation above excluded — see get_theme_template_files()).
+		$read_t0   = $profile ? hrtime( true ) : 0;
 		$cached    = $use_cache ? get_transient( $cache_key ) : false;
 		// is_array() (not a truthy check): an empty match set (a known-files set with no compiled assets
 		// in dist/) is still served from cache instead of re-scanning dist/ and re-writing the transient

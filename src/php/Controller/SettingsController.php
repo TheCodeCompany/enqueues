@@ -349,7 +349,10 @@ class SettingsController extends Controller {
 					</tfoot>
 				</table>
 				<p class="description">
-					<?php esc_html_e( '"Without cache" is the measured filesystem compute (the cost the no-cache system paid every request); "with cache" is the cache read. "Saved / hit" is without minus with — a NEGATIVE value means the cache read costs more than recomputing on this backend (so the cache is a net loss for that operation). Local storage uses DB transients; a production object cache reads faster and shifts these positive.', 'enqueues' ); ?>
+					<?php esc_html_e( '"Without cache" is the measured filesystem compute (the cost the no-cache system paid every request); "with cache" is the bare cache read. "Saved / hit" is without minus with — a NEGATIVE value means the cache read costs more than recomputing on this backend (a net loss for that operation). Local storage uses DB transients; a production object cache reads faster and shifts these positive.', 'enqueues' ); ?>
+				</p>
+				<p class="description">
+					<?php esc_html_e( 'Caveats: "Without cache (avg)" is sampled only from cache-fill events (cold start / post-deploy / TTL expiry), so its sample count (Misses) is usually small and measured under a cold filesystem — treat the saving as a directional estimate, not an exact per-request delta. For block_version_map, "with cache" is the single shared map read amortised per block (one read serves every block in a request), so its per-block figures are small but sum to the real per-request saving. Totals are a LOWER BOUND under concurrency (each request writes its samples independently, so on multi-worker hosts some are overwritten). Turn the profiler off in normal production once measured.', 'enqueues' ); ?>
 				</p>
 
 				<h3><?php esc_html_e( 'Last requests', 'enqueues' ); ?></h3>
