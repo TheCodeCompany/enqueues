@@ -22,8 +22,12 @@ function enqueues_get_settings(): array {
 		return $settings;
 	}
 
+	// Caching is OFF out of the box (opt-in). request_memo=false + persistent_cache=false makes
+	// enqueues_cache_mode() resolve to 'off' until a mode is chosen on Settings -> Enqueues, so a fresh
+	// install behaves exactly like the pre-cache framework. (A site that explicitly saved the legacy
+	// booleans still resolves to the matching mode for backward compatibility.)
 	$defaults = [
-		'request_memo'     => true,
+		'request_memo'     => false,
 		'persistent_cache' => false,
 		'cache_ttl'        => DAY_IN_SECONDS,
 		'profile'          => false,
@@ -136,9 +140,10 @@ function is_cache_enabled(): bool {
 /**
  * Determines whether request-level memoisation (O1) is enabled.
  *
- * This memo is in-process only (it dies with the request), so it cannot serve stale data and is on
- * by default. Controlled by the Settings -> Enqueues page (`request_memo`), overridable by the
- * ENQUEUES_REQUEST_MEMO_ENABLED constant and the 'enqueues_is_request_memo_enabled' filter.
+ * This memo is in-process only (it dies with the request), so it cannot serve stale data. It is enabled
+ * whenever the cache mode is 'request' or 'persistent' (the default mode is 'off', so it is OFF until a
+ * mode is chosen). Overridable by the ENQUEUES_REQUEST_MEMO_ENABLED constant and the
+ * 'enqueues_is_request_memo_enabled' filter.
  *
  * @return bool True if request memoisation is enabled.
  */
