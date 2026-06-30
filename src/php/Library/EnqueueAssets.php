@@ -475,11 +475,14 @@ class EnqueueAssets {
 	protected function get_theme_template_files( string $theme_directory ): array {
 
 		// Try to get the cached value first (skip the build-signature work entirely when off).
-		$use_cache      = is_cache_enabled();
-		$cache_key      = $use_cache ? enqueues_cache_key( 'theme_template_files' ) : '';
-		$template_files = $use_cache ? get_transient( $cache_key ) : false;
-		if ( $template_files ) {
-			return $template_files;
+		$use_cache = is_cache_enabled();
+		$cache_key = $use_cache ? enqueues_cache_key( 'theme_template_files' ) : '';
+		$cached    = $use_cache ? get_transient( $cache_key ) : false;
+		// is_array() (not a truthy check): get_transient() returns false on a miss and the stored array
+		// on a hit, so a legitimately empty result is still served from cache rather than falling through
+		// and re-scanning the whole theme tree (and re-writing the transient) on every request.
+		if ( is_array( $cached ) ) {
+			return $cached;
 		}
 
 		$template_files = [];
@@ -549,11 +552,14 @@ class EnqueueAssets {
 	protected function get_enqueue_asset_files( string $theme_directory, array $known_files ): array {
 
 		// Cache key based on the build signature and the known files for uniqueness.
-		$use_cache           = is_cache_enabled();
-		$cache_key           = $use_cache ? enqueues_cache_key( 'asset_files_' . md5( wp_json_encode( $known_files ) ) ) : '';
-		$enqueue_asset_files = $use_cache ? get_transient( $cache_key ) : false;
-		if ( $enqueue_asset_files ) {
-			return $enqueue_asset_files;
+		$use_cache = is_cache_enabled();
+		$cache_key = $use_cache ? enqueues_cache_key( 'asset_files_' . md5( wp_json_encode( $known_files ) ) ) : '';
+		$cached    = $use_cache ? get_transient( $cache_key ) : false;
+		// is_array() (not a truthy check): an empty match set (a known-files set with no compiled assets
+		// in dist/) is still served from cache instead of re-scanning dist/ and re-writing the transient
+		// on every request.
+		if ( is_array( $cached ) ) {
+			return $cached;
 		}
 
 		$enqueue_asset_files = [];

@@ -20,6 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - Corrected the `asset_find_file_path()` and `get_asset_page_type_file_data()` docblocks, which described request caching the functions did not previously perform.
+- Persistent cache (O2) now serves empty results from cache. `get_theme_template_files()` and `get_enqueue_asset_files()` gated the cache hit on a truthy check, so a legitimately empty array (e.g. a known-files set with no compiled assets in `dist/`) was treated as a miss and re-scanned the filesystem — and re-wrote the transient — on every request. They now use `is_array()` to distinguish a miss from a cached empty array, matching `load_persistent_version_map()`.
 
 ## [1.3.7] - 2026-05-19
 
