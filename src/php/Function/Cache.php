@@ -50,6 +50,58 @@ function enqueues_setting( string $key, $default_value = null ) {
 }
 
 /**
+ * Returns the active asset cache mode: 'off', 'request' (in-process static memo), or 'persistent'
+ * (also cached across requests in the object cache).
+ *
+ * This is the single source of truth behind is_request_memo_enabled() and is_cache_enabled().
+ * Resolution order, memoised once per request:
+ *  1. The explicit `cache_mode` setting (Settings -> Enqueues), if set.
+ *  2. Backward-compat: derive from the legacy `persistent_cache` / `request_memo` booleans.
+ *  3. The ENQUEUES_CACHE_MODE constant overrides the above.
+ *  4. The 'enqueues_cache_mode' filter has the final say.
+ *
+ * @return string One of 'off', 'request', 'persistent'.
+ */
+function enqueues_cache_mode(): string {
+
+	static $mode = null;
+
+	if ( null !== $mode ) {
+		return $mode;
+	}
+
+	$valid    = [ 'off', 'request', 'persistent' ];
+	$settings = enqueues_get_settings();
+
+	if ( isset( $settings['cache_mode'] ) && in_array( $settings['cache_mode'], $valid, true ) ) {
+		$default = (string) $settings['cache_mode'];
+	} elseif ( ! empty( $settings['persistent_cache'] ) ) {
+		$default = 'persistent';
+	} elseif ( ! empty( $settings['request_memo'] ) ) {
+		$default = 'request';
+	} else {
+		$default = 'off';
+	}
+
+	if ( defined( 'ENQUEUES_CACHE_MODE' ) && in_array( (string) ENQUEUES_CACHE_MODE, $valid, true ) ) {
+		$default = (string) ENQUEUES_CACHE_MODE;
+	}
+
+	/**
+	 * Filters the Enqueues asset cache mode.
+	 *
+	 * @param string $mode One of 'off', 'request', 'persistent'.
+	 */
+	$mode = (string) apply_filters( 'enqueues_cache_mode', $default );
+
+	if ( ! in_array( $mode, $valid, true ) ) {
+		$mode = 'request';
+	}
+
+	return $mode;
+}
+
+/**
  * Determines whether caching is enabled for asset loading.
  *
  * Caching helps to improve performance by avoiding repetitive filesystem operations such as checking file existence.
@@ -69,7 +121,7 @@ function is_cache_enabled(): bool {
 
 	// Precedence: an explicit ENQUEUES_CACHE_ENABLED constant overrides the admin setting; the
 	// 'enqueues_is_cache_enabled' filter always has the final say.
-	$default = defined( 'ENQUEUES_CACHE_ENABLED' ) ? (bool) ENQUEUES_CACHE_ENABLED : (bool) enqueues_setting( 'persistent_cache', false );
+	$default = defined( 'ENQUEUES_CACHE_ENABLED' ) ? (bool) ENQUEUES_CACHE_ENABLED : ( 'persistent' === enqueues_cache_mode() );
 
 	/**
 	 * Filters whether caching is enabled in the Enqueues plugin.
@@ -98,7 +150,7 @@ function is_request_memo_enabled(): bool {
 		return $enabled;
 	}
 
-	$default = defined( 'ENQUEUES_REQUEST_MEMO_ENABLED' ) ? (bool) ENQUEUES_REQUEST_MEMO_ENABLED : (bool) enqueues_setting( 'request_memo', true );
+	$default = defined( 'ENQUEUES_REQUEST_MEMO_ENABLED' ) ? (bool) ENQUEUES_REQUEST_MEMO_ENABLED : ( 'off' !== enqueues_cache_mode() );
 
 	/**
 	 * Filters whether request-level memoisation is enabled.
