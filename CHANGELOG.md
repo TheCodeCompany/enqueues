@@ -20,6 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - Corrected the `asset_find_file_path()` and `get_asset_page_type_file_data()` docblocks, which described request caching the functions did not previously perform.
+- **PERF**: `get_theme_template_files()` now prunes skip directories (`build-tools`, `dist`, `node_modules`, `vendor`) at the directory level via `RecursiveCallbackFilterIterator`, instead of recursing into them and skipping per file. On a dev checkout with a nested `node_modules` this cut the (uncached) theme-template scan from ~467ms to ~4.9ms with byte-identical output. This is the dominant per-request cost the O2 cache was masking; pruning helps every uncached request (dev, and the cold/post-deploy request in production) with no staleness trade-off.
 - Persistent cache (O2) now serves empty results from cache. `get_theme_template_files()` and `get_enqueue_asset_files()` gated the cache hit on a truthy check, so a legitimately empty array (e.g. a known-files set with no compiled assets in `dist/`) was treated as a miss and re-scanned the filesystem — and re-wrote the transient — on every request. They now use `is_array()` to distinguish a miss from a cached empty array, matching `load_persistent_version_map()`.
 
 ## [1.3.7] - 2026-05-19

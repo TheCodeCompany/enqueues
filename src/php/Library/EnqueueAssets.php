@@ -11,6 +11,7 @@ namespace Enqueues\Library;
 
 use RecursiveIteratorIterator;
 use RecursiveDirectoryIterator;
+use RecursiveCallbackFilterIterator;
 use function Enqueues\asset_find_file_path;
 use function Enqueues\enqueues_cache_key;
 use function Enqueues\get_cache_ttl;
@@ -487,31 +488,50 @@ class EnqueueAssets {
 
 		$template_files = [];
 
-		// Look for .php files in the theme's root and subdirectories like 'template-parts', excluding build-tools and dist directories.
-		$files = new RecursiveIteratorIterator(
-			new RecursiveDirectoryIterator( $theme_directory, RecursiveDirectoryIterator::SKIP_DOTS ),
-			RecursiveIteratorIterator::LEAVES_ONLY,
+		$directories = [
+			'/build-tools/',
+			'/dist/',
+			'/node_modules/',
+			'/vendor/',
+		];
+
+		/**
+		 * Filters the array of directories to skip being scanned for template files.
+		 *
+		 * @param array $directories The array of directories to skip being scanned for template files.
+		 */
+		$directories = apply_filters( 'enqueues_theme_skip_scan_directories', $directories );
+
+		// Prune the skip directories at the DIRECTORY level so the iterator never descends into them.
+		// Previously the skip list was a per-FILE substring check applied AFTER RecursiveDirectoryIterator
+		// had already recursed into and stat()'d every entry under build-tools/, node_modules/, dist/,
+		// vendor/ — on a dev checkout that is tens of thousands of inodes walked on every uncached call
+		// (the dominant cost the persistent cache was hiding). A RecursiveCallbackFilterIterator that
+		// rejects those directories skips the descent entirely; output is unchanged.
+		$dir_iterator = new RecursiveDirectoryIterator( $theme_directory, RecursiveDirectoryIterator::SKIP_DOTS );
+		$filtered     = new RecursiveCallbackFilterIterator(
+			$dir_iterator,
+			static function ( $current ) use ( $directories ) {
+				if ( $current->isDir() ) {
+					$dir_path = $current->getPathname() . '/';
+					foreach ( $directories as $dir ) {
+						if ( false !== strpos( $dir_path, $dir ) ) {
+							return false; // Do not descend into a skip directory.
+						}
+					}
+				}
+				return true;
+			}
 		);
+
+		// Look for .php files in the theme's root and subdirectories like 'template-parts'.
+		$files = new RecursiveIteratorIterator( $filtered, RecursiveIteratorIterator::LEAVES_ONLY );
 
 		foreach ( $files as $file ) {
 			if ( $file->isFile() && 'php' === $file->getExtension() ) {
 				$file_path = $file->getPathname();
 
-				$directories = [
-					'/build-tools/',
-					'/dist/',
-					'/node_modules/',
-					'/vendor/',
-				];
-
-				/**
-				 * Filters the array of directories to skip being scanned for template files.
-				 *
-				 * @param array $directories The array of directories to skip being scanned for template files.
-				 */
-				$directories = apply_filters( 'enqueues_theme_skip_scan_directories', $directories );
-				
-				// Skip files in the specified directories.
+				// Belt-and-braces: also honour the skip list per file (covers any filtered-in file-level skip).
 				foreach ( $directories as $dir ) {
 					if ( strpos( $file_path, $dir ) !== false ) {
 						continue 2; // 'continue 2' to skip the current iteration of the outer loop, if applicable.
