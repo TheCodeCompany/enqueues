@@ -387,6 +387,19 @@ function enqueues_profile_request(): array {
  */
 function enqueues_profile_persist(): void {
 
+	// Only record front-end page renders. Skip cron, AJAX, admin, REST and CLI requests: they are not
+	// representative page loads and would otherwise add an options-table write to every background
+	// request (wp-cron, heartbeat, etc.).
+	if (
+		wp_doing_cron()
+		|| wp_doing_ajax()
+		|| is_admin()
+		|| ( defined( 'REST_REQUEST' ) && REST_REQUEST )
+		|| ( defined( 'WP_CLI' ) && WP_CLI )
+	) {
+		return;
+	}
+
 	$request = enqueues_profile_request();
 
 	if ( empty( $request ) ) {

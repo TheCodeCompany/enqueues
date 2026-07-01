@@ -60,10 +60,26 @@ class SettingsController extends Controller {
 		add_action( 'switch_theme', [ $this, 'auto_flush' ] );
 		add_action( 'upgrader_process_complete', [ $this, 'auto_flush' ] );
 
+		// Require the settings capability on the options.php save path too (not just the page render).
+		add_filter( 'option_page_capability_' . self::PAGE, [ $this, 'capability' ] );
+
 		// Persist the cache profiler's per-request samples at end of request, while profiling is on.
 		if ( is_profile_enabled() ) {
 			add_action( 'shutdown', '\\Enqueues\\enqueues_profile_persist', 9999 );
 		}
+	}
+
+	/**
+	 * Capability required to view and change these settings.
+	 *
+	 * Administrators only by default ('manage_options'). Also used as the filter callback for
+	 * 'option_page_capability_enqueues', so it must accept and ignore an incoming value. Filterable via
+	 * 'enqueues_settings_capability'.
+	 *
+	 * @return string
+	 */
+	public function capability(): string {
+		return (string) apply_filters( 'enqueues_settings_capability', 'manage_options' );
 	}
 
 	/**
@@ -75,7 +91,7 @@ class SettingsController extends Controller {
 		add_options_page(
 			__( 'Enqueues', 'enqueues' ),
 			__( 'Enqueues', 'enqueues' ),
-			'manage_options',
+			$this->capability(),
 			self::PAGE,
 			[ $this, 'render_page' ]
 		);
@@ -126,13 +142,22 @@ class SettingsController extends Controller {
 			$mode = 'persistent';
 		}
 
+		$profile = ! empty( $input['profile'] );
+
+		// Clean up after the profiler when it is switched OFF (having been on): discard the collected
+		// stats + ring buffer so nothing is left in the database. It is a measure-then-disable tool.
+		$existing = enqueues_get_settings();
+		if ( ! empty( $existing['profile'] ) && ! $profile ) {
+			enqueues_profile_reset();
+		}
+
 		// Derive the legacy booleans from the mode so any external reader stays consistent.
 		return [
 			'cache_mode'       => $mode,
 			'request_memo'     => 'off' !== $mode,
 			'persistent_cache' => 'persistent' === $mode,
 			'cache_ttl'        => $ttl,
-			'profile'          => ! empty( $input['profile'] ),
+			'profile'          => $profile,
 		];
 	}
 
@@ -143,7 +168,7 @@ class SettingsController extends Controller {
 	 */
 	public function handle_flush_cache() {
 
-		if ( ! current_user_can( 'manage_options' ) ) {
+		if ( ! current_user_can( $this->capability() ) ) {
 			wp_die( esc_html__( 'You do not have permission to do that.', 'enqueues' ) );
 		}
 
@@ -171,7 +196,7 @@ class SettingsController extends Controller {
 	 */
 	public function handle_reset_profile() {
 
-		if ( ! current_user_can( 'manage_options' ) ) {
+		if ( ! current_user_can( $this->capability() ) ) {
 			wp_die( esc_html__( 'You do not have permission to do that.', 'enqueues' ) );
 		}
 
@@ -190,7 +215,7 @@ class SettingsController extends Controller {
 	 */
 	public function render_page() {
 
-		if ( ! current_user_can( 'manage_options' ) ) {
+		if ( ! current_user_can( $this->capability() ) ) {
 			return;
 		}
 
@@ -200,6 +225,18 @@ class SettingsController extends Controller {
 		$cache_const      = defined( 'ENQUEUES_CACHE_ENABLED' );
 		$profile_on       = ! empty( $settings['profile'] );
 		$flushed          = isset( $_GET['enqueues_flushed'] ); // phpcs:ignore WordPress.Security.NonceVerification
+
+		// Render a seconds value as a friendly duration (e.g. 2592000 -> "30 days").
+		$fmt_secs = static function ( $seconds ) {
+			$seconds = (int) $seconds;
+			foreach ( [ DAY_IN_SECONDS => 'day', HOUR_IN_SECONDS => 'hour', MINUTE_IN_SECONDS => 'minute' ] as $unit => $label ) {
+				if ( $seconds >= $unit && 0 === $seconds % $unit ) {
+					$n = $seconds / $unit;
+					return $n . ' ' . $label . ( 1 === $n ? '' : 's' );
+				}
+			}
+			return $seconds . ' s';
+		};
 		?>
 		<div class="wrap">
 			<h1><?php esc_html_e( 'Enqueues', 'enqueues' ); ?></h1>
@@ -241,7 +278,10 @@ class SettingsController extends Controller {
 						<th scope="row"><label for="enqueues_cache_ttl"><?php esc_html_e( 'Cache TTL (seconds)', 'enqueues' ); ?></label></th>
 						<td>
 							<input type="number" min="3600" step="1" id="enqueues_cache_ttl" name="<?php echo esc_attr( self::OPTION ); ?>[cache_ttl]" value="<?php echo esc_attr( (string) $ttl ); ?>" class="regular-text" />
-							<p class="description"><?php esc_html_e( 'How long persistent cache entries live (minimum 1 hour). This also bounds the worst-case staleness window if a deploy is not followed by a flush.', 'enqueues' ); ?></p>
+							<p class="description">
+								<?php esc_html_e( 'How long persistent cache entries live (minimum 1 hour). This also bounds the worst-case staleness window if a deploy is not followed by a flush.', 'enqueues' ); ?>
+								<br /><strong><?php echo esc_html( sprintf( /* translators: %s: human-readable duration */ __( 'Currently: %s', 'enqueues' ), $fmt_secs( $ttl ) ) ); ?></strong>
+							</p>
 						</td>
 					</tr>
 					<tr>
@@ -272,9 +312,9 @@ class SettingsController extends Controller {
 			<table class="widefat striped" style="max-width:640px">
 				<tbody>
 					<tr><td><?php esc_html_e( 'Cache mode', 'enqueues' ); ?></td><td><code><?php echo esc_html( $mode ); ?></code></td></tr>
-					<tr><td><?php esc_html_e( 'Request memo active', 'enqueues' ); ?></td><td><code><?php echo is_request_memo_enabled() ? 'on' : 'off'; ?></code></td></tr>
+					<tr><td><?php esc_html_e( 'Per-request memo active', 'enqueues' ); ?></td><td><code><?php echo is_request_memo_enabled() ? 'on' : 'off'; ?></code></td></tr>
 					<tr><td><?php esc_html_e( 'Persistent cache active', 'enqueues' ); ?></td><td><code><?php echo is_cache_enabled() ? 'on' : 'off'; echo $cache_const ? ' (constant)' : ''; ?></code></td></tr>
-					<tr><td><?php esc_html_e( 'Cache TTL', 'enqueues' ); ?></td><td><code><?php echo esc_html( (string) get_cache_ttl() ); ?>s</code></td></tr>
+					<tr><td><?php esc_html_e( 'Cache TTL', 'enqueues' ); ?></td><td><code><?php echo esc_html( (string) get_cache_ttl() ); ?>s</code> <span class="description">(<?php echo esc_html( $fmt_secs( get_cache_ttl() ) ); ?>)</span></td></tr>
 					<tr><td><?php esc_html_e( 'Build signature', 'enqueues' ); ?></td><td><code><?php echo esc_html( get_enqueues_build_signature() ); ?></code></td></tr>
 				</tbody>
 			</table>
@@ -311,7 +351,7 @@ class SettingsController extends Controller {
 							<th><?php esc_html_e( 'Hit rate', 'enqueues' ); ?></th>
 							<th><?php esc_html_e( 'With cache (avg)', 'enqueues' ); ?></th>
 							<th><?php esc_html_e( 'Without cache (avg)', 'enqueues' ); ?></th>
-							<th><?php esc_html_e( 'Saved / hit', 'enqueues' ); ?></th>
+							<th title="<?php esc_attr_e( 'Without cache minus with cache. Negative = the cache read is slower than recomputing on this backend.', 'enqueues' ); ?>"><?php esc_html_e( 'Saved / hit', 'enqueues' ); ?></th>
 						</tr>
 					</thead>
 					<tbody>
@@ -333,7 +373,7 @@ class SettingsController extends Controller {
 							<td><?php echo (int) $miss_n; ?></td>
 							<td><?php echo esc_html( number_format( $rate, 1 ) ); ?>%</td>
 							<td><?php echo wp_kses_post( $fmt_us( $hit_avg ) ); ?></td>
-							<td><?php echo wp_kses_post( $fmt_us( $miss_avg ) ); ?></td>
+							<td><?php echo wp_kses_post( $fmt_us( $miss_avg ) ); ?> <span class="description">(n=<?php echo (int) $miss_n; ?>)</span></td>
 							<td><?php echo wp_kses_post( $fmt_us( $saved ) ); ?></td>
 						</tr>
 					<?php endforeach; ?>
