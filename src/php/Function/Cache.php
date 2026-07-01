@@ -31,6 +31,7 @@ function enqueues_get_settings(): array {
 		'persistent_cache' => false,
 		'cache_ttl'        => DAY_IN_SECONDS,
 		'profile'          => false,
+		'profile_log_max'  => 20,
 	];
 
 	$stored   = get_option( 'enqueues_settings', [] );
@@ -330,6 +331,27 @@ function is_profile_enabled(): bool {
 }
 
 /**
+ * Number of recent-request records the profiler keeps (the "Last requests" ring buffer).
+ *
+ * Configurable on Settings -> Enqueues in steps of 10, from 10 to 200 (default 20). Clamped to that
+ * range and snapped to a multiple of 10. Filterable via 'enqueues_profile_log_max'.
+ *
+ * @return int
+ */
+function enqueues_profile_log_max(): int {
+
+	$max = (int) ( round( (int) enqueues_setting( 'profile_log_max', 20 ) / 10 ) * 10 );
+	$max = max( 10, min( 200, $max ) );
+
+	/**
+	 * Filters the number of recent-request records the profiler keeps.
+	 *
+	 * @param int $max The ring-buffer size (10-200, a multiple of 10).
+	 */
+	return (int) apply_filters( 'enqueues_profile_log_max', $max );
+}
+
+/**
  * Records one cache-layer timing sample into the per-request profiler accumulator.
  *
  * No-op-cheap when profiling is off (callers guard with is_profile_enabled() so this is not even
@@ -439,8 +461,9 @@ function enqueues_profile_persist(): void {
 		'buckets' => $request,
 	];
 
-	if ( count( $log ) > 20 ) {
-		$log = array_slice( $log, -20 );
+	$log_max = enqueues_profile_log_max();
+	if ( count( $log ) > $log_max ) {
+		$log = array_slice( $log, -$log_max );
 	}
 
 	update_option( 'enqueues_profile_data', [ 'stats' => $stats, 'log' => $log ], false );

@@ -20,6 +20,7 @@ use function Enqueues\get_cache_ttl;
 use function Enqueues\get_enqueues_build_signature;
 use function Enqueues\is_cache_enabled;
 use function Enqueues\is_profile_enabled;
+use function Enqueues\enqueues_profile_log_max;
 use function Enqueues\is_request_memo_enabled;
 use function Enqueues\enqueues_profile_reset;
 
@@ -151,6 +152,10 @@ class SettingsController extends Controller {
 			enqueues_profile_reset();
 		}
 
+		// Profiler "Last requests" log size: 10-200, snapped to a multiple of 10.
+		$log_max = isset( $input['profile_log_max'] ) ? (int) $input['profile_log_max'] : 20;
+		$log_max = max( 10, min( 200, (int) ( round( $log_max / 10 ) * 10 ) ) );
+
 		// Derive the legacy booleans from the mode so any external reader stays consistent.
 		return [
 			'cache_mode'       => $mode,
@@ -158,6 +163,7 @@ class SettingsController extends Controller {
 			'persistent_cache' => 'persistent' === $mode,
 			'cache_ttl'        => $ttl,
 			'profile'          => $profile,
+			'profile_log_max'  => $log_max,
 		];
 	}
 
@@ -224,6 +230,7 @@ class SettingsController extends Controller {
 		$ttl              = (int) ( $settings['cache_ttl'] ?? DAY_IN_SECONDS );
 		$cache_const      = defined( 'ENQUEUES_CACHE_ENABLED' );
 		$profile_on       = ! empty( $settings['profile'] );
+		$profile_log_max  = enqueues_profile_log_max();
 		$flushed          = isset( $_GET['enqueues_flushed'] ); // phpcs:ignore WordPress.Security.NonceVerification
 
 		// Render a seconds value as a friendly duration (e.g. 2592000 -> "30 days").
@@ -294,6 +301,17 @@ class SettingsController extends Controller {
 							<p class="description"><?php esc_html_e( 'Off by default and free when off. When on, each request stores a small timing sample shown in the Cache profiler section below. Turn off in normal production once measured.', 'enqueues' ); ?></p>
 						</td>
 					</tr>
+					<tr>
+						<th scope="row"><label for="enqueues_profile_log_max"><?php esc_html_e( 'Profiler log size', 'enqueues' ); ?></label></th>
+						<td>
+							<select id="enqueues_profile_log_max" name="<?php echo esc_attr( self::OPTION ); ?>[profile_log_max]">
+								<?php for ( $n = 10; $n <= 200; $n += 10 ) : ?>
+									<option value="<?php echo (int) $n; ?>" <?php selected( $profile_log_max, $n ); ?>><?php echo (int) $n; ?></option>
+								<?php endfor; ?>
+							</select>
+							<p class="description"><?php esc_html_e( 'How many recent requests the profiler keeps in the "Last requests" list (10-200).', 'enqueues' ); ?></p>
+						</td>
+					</tr>
 				</table>
 				<?php submit_button(); ?>
 			</form>
@@ -361,11 +379,15 @@ class SettingsController extends Controller {
 						$miss_n   = (int) ( $s['miss_n'] ?? 0 );
 						$hit_avg  = $hit_n ? ( (float) $s['hit_ns'] / $hit_n ) : 0.0;
 						$miss_avg = $miss_n ? ( (float) $s['miss_ns'] / $miss_n ) : 0.0;
-						$saved    = $miss_avg - $hit_avg; // Signed: negative means the cache read costs more than the compute on this backend.
-						$rate     = ( $hit_n + $miss_n ) ? ( 100 * $hit_n / ( $hit_n + $miss_n ) ) : 0;
+						// "Saved" needs a without-cache (miss) baseline. With no miss sample yet (n=0) the
+						// without-cache cost is UNKNOWN, not zero — show a dash and exclude the row from the
+						// total rather than reporting a false 0 - with = negative saving.
+						$has_baseline = $miss_n > 0;
+						$saved        = $has_baseline ? ( $miss_avg - $hit_avg ) : null;
+						$rate         = ( $hit_n + $miss_n ) ? ( 100 * $hit_n / ( $hit_n + $miss_n ) ) : 0;
 						$tot_hit_n    += $hit_n;
 						$tot_miss_n   += $miss_n;
-						$tot_saved_ns += $saved * $hit_n;
+						$tot_saved_ns += $has_baseline ? $saved * $hit_n : 0;
 						?>
 						<tr>
 							<td><code><?php echo esc_html( $bucket ); ?></code></td>
@@ -374,7 +396,15 @@ class SettingsController extends Controller {
 							<td><?php echo esc_html( number_format( $rate, 1 ) ); ?>%</td>
 							<td><?php echo wp_kses_post( $fmt_us( $hit_avg ) ); ?></td>
 							<td><?php echo wp_kses_post( $fmt_us( $miss_avg ) ); ?> <span class="description">(n=<?php echo (int) $miss_n; ?>)</span></td>
-							<td><?php echo wp_kses_post( $fmt_us( $saved ) ); ?></td>
+							<td>
+								<?php
+								if ( null === $saved ) {
+									echo '<span title="' . esc_attr__( 'No cold (miss) sample yet — without-cache cost unknown, so this row is excluded from the total.', 'enqueues' ) . '">&mdash;</span>';
+								} else {
+									echo wp_kses_post( $fmt_us( $saved ) );
+								}
+								?>
+							</td>
 						</tr>
 					<?php endforeach; ?>
 					</tbody>
@@ -392,7 +422,7 @@ class SettingsController extends Controller {
 					<?php esc_html_e( '"Without cache" is the measured filesystem compute (the cost the no-cache system paid every request); "with cache" is the bare cache read. "Saved / hit" is without minus with — a NEGATIVE value means the cache read costs more than recomputing on this backend (a net loss for that operation). Local storage uses DB transients; a production object cache reads faster and shifts these positive.', 'enqueues' ); ?>
 				</p>
 				<p class="description">
-					<?php esc_html_e( 'Caveats: "Without cache (avg)" is sampled only from cache-fill events (cold start / post-deploy / TTL expiry), so its sample count (Misses) is usually small and measured under a cold filesystem — treat the saving as a directional estimate, not an exact per-request delta. For block_version_map, "with cache" is the single shared map read amortised per block (one read serves every block in a request), so its per-block figures are small but sum to the real per-request saving. Totals are a LOWER BOUND under concurrency (each request writes its samples independently, so on multi-worker hosts some are overwritten). Turn the profiler off in normal production once measured.', 'enqueues' ); ?>
+					<?php esc_html_e( 'Caveats: "Without cache (avg)" is sampled only from cache-fill events (cold start / post-deploy / TTL expiry), so its sample count (Misses) is usually small and measured under a cold filesystem — treat the saving as a directional estimate, not an exact per-request delta. An operation with no miss sample yet shows a dash for Saved / hit and is excluded from the total (its without-cache cost is unknown, not zero). For block_version_map, "with cache" is the single shared map read amortised per block (one read serves every block in a request), so its per-block figures are small but sum to the real per-request saving. Totals are a LOWER BOUND under concurrency (each request writes its samples independently, so on multi-worker hosts some are overwritten). Turn the profiler off in normal production once measured.', 'enqueues' ); ?>
 				</p>
 
 				<h3><?php esc_html_e( 'Last requests', 'enqueues' ); ?></h3>
