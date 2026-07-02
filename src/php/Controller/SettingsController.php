@@ -3,7 +3,8 @@
  * Admin settings page for the Enqueues framework.
  *
  * Exposes the asset-loading performance controls (request-level memoisation and the persistent
- * object-cache layer) as toggles under Settings -> Enqueues, plus a manual "Flush cache" action.
+ * object-cache layer) as a single cache-mode selector under Settings -> Enqueues, plus a manual
+ * "Flush cache" action.
  *
  * File Path: src/php/Controller/SettingsController.php
  *
@@ -133,15 +134,13 @@ class SettingsController extends Controller {
 			$ttl = HOUR_IN_SECONDS;
 		}
 
-		// Single source of truth: the cache mode radio ('off' | 'request' | 'persistent').
+		// Single source of truth: the cache mode radio ('off' | 'request' | 'persistent'). Malformed or
+		// missing input falls back to 'off' (the opt-in default); a real save from the radio always
+		// submits a valid value. If a constant pins the mode (ENQUEUES_CACHE_MODE, or the deprecated
+		// ENQUEUES_CACHE_ENABLED), enqueues_cache_mode() overrides this stored value at read time, so we
+		// just persist whatever was chosen.
 		$valid = [ 'off', 'request', 'persistent' ];
-		$mode  = isset( $input['cache_mode'] ) && in_array( $input['cache_mode'], $valid, true ) ? (string) $input['cache_mode'] : 'request';
-
-		// The ENQUEUES_CACHE_ENABLED constant forces Persistent mode; the radio's Persistent option is
-		// disabled in that case, so honour the constant rather than letting a save downgrade it.
-		if ( defined( 'ENQUEUES_CACHE_ENABLED' ) && ENQUEUES_CACHE_ENABLED ) {
-			$mode = 'persistent';
-		}
+		$mode  = isset( $input['cache_mode'] ) && in_array( $input['cache_mode'], $valid, true ) ? (string) $input['cache_mode'] : 'off';
 
 		$profile = ! empty( $input['profile'] );
 
@@ -228,7 +227,13 @@ class SettingsController extends Controller {
 		$settings        = enqueues_get_settings();
 		$mode             = enqueues_cache_mode();
 		$ttl              = (int) ( $settings['cache_ttl'] ?? DAY_IN_SECONDS );
-		$cache_const      = defined( 'ENQUEUES_CACHE_ENABLED' );
+		// A constant pins the mode when either the modern ENQUEUES_CACHE_MODE or the deprecated
+		// ENQUEUES_CACHE_ENABLED is defined; enqueues_cache_mode() has already resolved $mode to the
+		// effective value, so the radios below are locked to it and simply reflect reality.
+		$mode_locked      = defined( 'ENQUEUES_CACHE_MODE' ) || defined( 'ENQUEUES_CACHE_ENABLED' );
+		$deprecated_const = defined( 'ENQUEUES_CACHE_ENABLED' ) && ! defined( 'ENQUEUES_CACHE_MODE' );
+		$obj_cache        = wp_using_ext_object_cache();
+		$downgraded       = ( 'persistent' === $mode ) && ! $obj_cache;
 		$profile_on       = ! empty( $settings['profile'] );
 		$profile_log_max  = enqueues_profile_log_max();
 		$flushed          = isset( $_GET['enqueues_flushed'] ); // phpcs:ignore WordPress.Security.NonceVerification
@@ -264,19 +269,19 @@ class SettingsController extends Controller {
 						<td>
 							<fieldset>
 								<label style="display:block;margin-bottom:6px">
-									<input type="radio" name="<?php echo esc_attr( self::OPTION ); ?>[cache_mode]" value="off" <?php checked( $mode, 'off' ); ?> />
+									<input type="radio" name="<?php echo esc_attr( self::OPTION ); ?>[cache_mode]" value="off" <?php checked( $mode, 'off' ); ?> <?php disabled( $mode_locked ); ?> />
 									<strong><?php esc_html_e( 'Off', 'enqueues' ); ?></strong> &mdash; <?php esc_html_e( 'no caching; resolve assets on every request (the previous behaviour).', 'enqueues' ); ?>
 								</label>
 								<label style="display:block;margin-bottom:6px">
-									<input type="radio" name="<?php echo esc_attr( self::OPTION ); ?>[cache_mode]" value="request" <?php checked( $mode, 'request' ); ?> />
+									<input type="radio" name="<?php echo esc_attr( self::OPTION ); ?>[cache_mode]" value="request" <?php checked( $mode, 'request' ); ?> <?php disabled( $mode_locked ); ?> />
 									<strong><?php esc_html_e( 'Per-request (static)', 'enqueues' ); ?></strong> &mdash; <?php esc_html_e( 'in-process memo: deduped within each page load, never stale, nothing stored across requests. Recommended default.', 'enqueues' ); ?>
 								</label>
 								<label style="display:block">
-									<input type="radio" name="<?php echo esc_attr( self::OPTION ); ?>[cache_mode]" value="persistent" <?php checked( $mode, 'persistent' ); ?> <?php disabled( $cache_const ); ?> />
+									<input type="radio" name="<?php echo esc_attr( self::OPTION ); ?>[cache_mode]" value="persistent" <?php checked( $mode, 'persistent' ); ?> <?php disabled( $mode_locked ); ?> />
 									<strong><?php esc_html_e( 'Persistent (object cache)', 'enqueues' ); ?></strong> &mdash; <?php esc_html_e( 'also cache across requests in the object cache (global). Fastest under load; uses the object cache where present (e.g. Memcached), else the database. Needs a deploy-time flush or the enqueues_build_signature filter.', 'enqueues' ); ?>
 								</label>
-								<?php if ( $cache_const ) : ?>
-									<p class="description"><strong><?php esc_html_e( 'The ENQUEUES_CACHE_ENABLED constant forces Persistent mode.', 'enqueues' ); ?></strong></p>
+								<?php if ( $mode_locked ) : ?>
+									<p class="description"><strong><?php echo esc_html( sprintf( /* translators: 1: constant name, 2: effective cache mode */ __( 'Cache mode is set in code by the %1$s constant (currently: %2$s); this option is ignored until it is removed.', 'enqueues' ), $deprecated_const ? 'ENQUEUES_CACHE_ENABLED' : 'ENQUEUES_CACHE_MODE', $mode ) ); ?></strong><?php if ( $deprecated_const ) : ?><br /><?php esc_html_e( 'ENQUEUES_CACHE_ENABLED is deprecated; use ENQUEUES_CACHE_MODE ( off | request | persistent ) instead.', 'enqueues' ); ?><?php endif; ?></p>
 								<?php endif; ?>
 							</fieldset>
 						</td>
@@ -331,7 +336,8 @@ class SettingsController extends Controller {
 				<tbody>
 					<tr><td><?php esc_html_e( 'Cache mode', 'enqueues' ); ?></td><td><code><?php echo esc_html( $mode ); ?></code></td></tr>
 					<tr><td><?php esc_html_e( 'Per-request memo active', 'enqueues' ); ?></td><td><code><?php echo is_request_memo_enabled() ? 'on' : 'off'; ?></code></td></tr>
-					<tr><td><?php esc_html_e( 'Persistent cache active', 'enqueues' ); ?></td><td><code><?php echo is_cache_enabled() ? 'on' : 'off'; echo $cache_const ? ' (constant)' : ''; ?></code></td></tr>
+					<tr><td><?php esc_html_e( 'Persistent cache active', 'enqueues' ); ?></td><td><code><?php echo is_cache_enabled() ? 'on' : 'off'; echo $mode_locked ? ' (set by constant)' : ''; ?></code><?php if ( $downgraded ) : ?> <span class="description"><?php esc_html_e( 'no external object cache — running as per-request', 'enqueues' ); ?></span><?php endif; ?></td></tr>
+						<tr><td><?php esc_html_e( 'External object cache', 'enqueues' ); ?></td><td><code><?php echo $obj_cache ? 'present' : 'absent'; ?></code></td></tr>
 					<tr><td><?php esc_html_e( 'Cache TTL', 'enqueues' ); ?></td><td><code><?php echo esc_html( (string) get_cache_ttl() ); ?>s</code> <span class="description">(<?php echo esc_html( $fmt_secs( get_cache_ttl() ) ); ?>)</span></td></tr>
 					<tr><td><?php esc_html_e( 'Build signature', 'enqueues' ); ?></td><td><code><?php echo esc_html( get_enqueues_build_signature() ); ?></code></td></tr>
 				</tbody>

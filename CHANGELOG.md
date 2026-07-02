@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - **FEATURE**: Asset caching with admin toggles and a Settings → Enqueues page
-  - **Request memo (O1)** — in-process memoisation of `asset_find_file_path()`, `get_asset_page_type_file_data()`, and per-block `get_block_asset_version()`, removing duplicate filesystem lookups within a request (including the 2×-per-block version computation across the `block_type_metadata` / `block_type_metadata_settings` filters). On by default; cannot serve stale data.
+  - **Request memo (O1)** — in-process memoisation of `asset_find_file_path()`, `get_asset_page_type_file_data()`, and per-block `get_block_asset_version()`, removing duplicate filesystem lookups within a request (including the 2×-per-block version computation across the `block_type_metadata` / `block_type_metadata_settings` filters). Active in the Per-request and Persistent modes (the framework defaults to Off); cannot serve stale data.
   - **Persistent cache (O2)** — caches the theme directory scans and the block asset-version map across requests in the object cache, keyed by the build signature. Off by default.
   - **Settings → Enqueues** admin page (`SettingsController`) with a single **Asset cache mode** selector — Off (recompute every request) / Per-request (in-process static memo) / Persistent (object cache, global across requests) — a TTL field (minimum 1 hour), a manual *Flush cache* button, and an effective-state status panel. `enqueues_cache_mode()` is the single source of truth behind `is_request_memo_enabled()` / `is_cache_enabled()`; the legacy `request_memo` / `persistent_cache` booleans still resolve for backward compatibility. **Caching defaults to Off** (opt-in) — a fresh install behaves exactly like the pre-cache framework until a mode is chosen.
   - **Build signature** (`get_enqueues_build_signature()`) — a content-hash fingerprint of every compiled `.asset.php` (theme JS dir + each block) that namespaces persistent entries, so a deploy invalidates them automatically, **including block-only deploys**; immune to the git-checkout "mtime not bumped" pitfall.
@@ -19,9 +19,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - **UX** — the Cache TTL shows a human-readable duration (e.g. `2592000s (30 days)`), the profiler's "Without cache" column shows its sample count (`n=`), and "Saved / hit" has an explanatory tooltip.
   - **Profiler log size** is configurable — 10 to 200 in steps of 10 (default 20) — via the `profile_log_max` setting, `enqueues_profile_log_max()`, and the `enqueues_profile_log_max` filter.
   - **Fixed** — "Saved / hit" and the total no longer read as a false negative for an operation with no miss baseline (`n=0`): such rows show `—` and are excluded from the total (an absent without-cache sample is unknown, not zero, so it is not counted as `0 − with`).
-  - New filters: `enqueues_is_request_memo_enabled`, `enqueues_build_signature`, `enqueues_cache_mode`; new action `enqueues_cache_flushed`; new constants `ENQUEUES_REQUEST_MEMO_ENABLED`, `ENQUEUES_CACHE_MODE`.
+  - New filters: `enqueues_is_request_memo_enabled`, `enqueues_build_signature`, `enqueues_cache_mode`; new action `enqueues_cache_flushed`; new constant `ENQUEUES_CACHE_MODE` (the single config-as-code override).
   - The persistent cache key is computed lazily, so there is no build-signature cost when caching is off.
   - See [docs/PERFORMANCE.md](docs/PERFORMANCE.md), including guidance on measuring impact in production without New Relic.
+
+### Changed
+- **Config model** — the Settings → Enqueues **cache mode is the single source of truth**, resolved in one place (`enqueues_cache_mode()`). `is_cache_enabled()` and `is_request_memo_enabled()` now derive purely from that mode and no longer read any constant independently, so the settings page and the runtime can no longer disagree. When a constant pins the mode, **all three** radio options are locked (not just Persistent) and the page states which constant is in force and the effective mode.
+- `ENQUEUES_CACHE_MODE` (`off` | `request` | `persistent`) is the single supported config-as-code override; when defined it overrides the saved option at read time.
+- **Object-cache safety** — Persistent mode now only actually persists when an external object cache is present (`wp_using_ext_object_cache()`); without one (local dev, or a prod DB cloned to a host with no object cache) it transparently degrades to Per-request, since transients in the options table measured net-negative versus recomputing. The in-process memo still runs, the `enqueues_is_cache_enabled` filter can force the DB-transient path, and the Status panel reports whether an object cache is present and flags the downgrade.
+
+### Deprecated
+- **`ENQUEUES_CACHE_ENABLED`** (a boolean from before the mode selector existed) is deprecated in favour of `ENQUEUES_CACHE_MODE`. It is still honoured via a back-compat shim in `enqueues_cache_mode()` — `true` maps to Persistent, **`false` maps to Off** (preserving the "disable caching" intent) — and will be removed in the next major. The Settings → Enqueues page shows a deprecation notice while it is defined.
 
 ### Fixed
 - Corrected the `asset_find_file_path()` and `get_asset_page_type_file_data()` docblocks, which described request caching the functions did not previously perform.

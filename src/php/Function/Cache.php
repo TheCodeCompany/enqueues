@@ -12,7 +12,7 @@ namespace Enqueues;
 /**
  * Returns the Enqueues settings array (from the Settings -> Enqueues page), memoised per request.
  *
- * @return array{request_memo: bool, persistent_cache: bool, cache_ttl: int}
+ * @return array{request_memo: bool, persistent_cache: bool, cache_ttl: int, profile: bool, profile_log_max: int}
  */
 function enqueues_get_settings(): array {
 
@@ -60,10 +60,12 @@ function enqueues_setting( string $key, $default_value = null ) {
  *
  * This is the single source of truth behind is_request_memo_enabled() and is_cache_enabled().
  * Resolution order, memoised once per request:
- *  1. The explicit `cache_mode` setting (Settings -> Enqueues), if set.
- *  2. Backward-compat: derive from the legacy `persistent_cache` / `request_memo` booleans.
- *  3. The ENQUEUES_CACHE_MODE constant overrides the above.
- *  4. The 'enqueues_cache_mode' filter has the final say.
+ *  1. The `cache_mode` setting (Settings -> Enqueues) is the source of truth; a site that saved the
+ *     pre-selector `persistent_cache` / `request_memo` booleans resolves to the matching mode.
+ *  2. Deprecated: the ENQUEUES_CACHE_ENABLED boolean constant maps to a mode (true -> persistent,
+ *     false -> off) and overrides the option. Prefer ENQUEUES_CACHE_MODE going forward.
+ *  3. The ENQUEUES_CACHE_MODE constant (the single supported config-as-code override) wins over 1-2.
+ *  4. The 'enqueues_cache_mode' filter has the final say (a bogus value falls back to the above).
  *
  * @return string One of 'off', 'request', 'persistent'.
  */
@@ -78,6 +80,8 @@ function enqueues_cache_mode(): string {
 	$valid    = [ 'off', 'request', 'persistent' ];
 	$settings = enqueues_get_settings();
 
+	// 1. The settings-page option is the source of truth. Fall back to the legacy stored booleans for a
+	// site that saved settings under the pre-mode-selector design.
 	if ( isset( $settings['cache_mode'] ) && in_array( $settings['cache_mode'], $valid, true ) ) {
 		$default = (string) $settings['cache_mode'];
 	} elseif ( ! empty( $settings['persistent_cache'] ) ) {
@@ -88,6 +92,15 @@ function enqueues_cache_mode(): string {
 		$default = 'off';
 	}
 
+	// 2. Deprecated: the ENQUEUES_CACHE_ENABLED boolean constant (config-as-code from before the mode
+	// selector existed) maps to a mode -- truthy forces Persistent, false forces Off. It overrides the
+	// option because a wp-config constant is a deliberate per-environment choice. Prefer
+	// ENQUEUES_CACHE_MODE going forward; this shim will be removed in the next major.
+	if ( defined( 'ENQUEUES_CACHE_ENABLED' ) ) {
+		$default = ENQUEUES_CACHE_ENABLED ? 'persistent' : 'off';
+	}
+
+	// 3. The modern ENQUEUES_CACHE_MODE constant is the single supported config-as-code override.
 	if ( defined( 'ENQUEUES_CACHE_MODE' ) && in_array( (string) ENQUEUES_CACHE_MODE, $valid, true ) ) {
 		$default = (string) ENQUEUES_CACHE_MODE;
 	}
@@ -99,22 +112,26 @@ function enqueues_cache_mode(): string {
 	 */
 	$mode = (string) apply_filters( 'enqueues_cache_mode', $default );
 
+	// A filter returning a bogus value falls back to the resolved (valid) mode, not a hardcoded
+	// literal, so a buggy filter cannot silently flip caching on or off.
 	if ( ! in_array( $mode, $valid, true ) ) {
-		$mode = 'request';
+		$mode = $default;
 	}
 
 	return $mode;
 }
 
 /**
- * Determines whether caching is enabled for asset loading.
+ * Determines whether the persistent (cross-request) cache layer is enabled.
  *
- * Caching helps to improve performance by avoiding repetitive filesystem operations such as checking file existence.
- * It is enabled based on the Settings -> Enqueues page (`persistent_cache`), the
- * `ENQUEUES_CACHE_ENABLED` constant (which overrides the setting), and the
- * 'enqueues_is_cache_enabled' filter (which has the final say).
+ * On only when enqueues_cache_mode() resolves to 'persistent' AND an external object cache is present.
+ * The resolver already folds in the ENQUEUES_CACHE_ENABLED / ENQUEUES_CACHE_MODE constants, so nothing
+ * here reads a constant independently. Without an external object cache WordPress keeps transients in
+ * the options table, where the persistent layer measured net-negative versus recomputing, so Persistent
+ * transparently degrades to Per-request (the in-process memo still runs). The 'enqueues_is_cache_enabled'
+ * filter has the final say (e.g. to force the DB-transient path in local testing).
  *
- * @return bool True if caching is enabled, false otherwise.
+ * @return bool True if the persistent cache is enabled, false otherwise.
  */
 function is_cache_enabled(): bool {
 
@@ -124,9 +141,11 @@ function is_cache_enabled(): bool {
 		return $enabled;
 	}
 
-	// Precedence: an explicit ENQUEUES_CACHE_ENABLED constant overrides the admin setting; the
-	// 'enqueues_is_cache_enabled' filter always has the final say.
-	$default = defined( 'ENQUEUES_CACHE_ENABLED' ) ? (bool) ENQUEUES_CACHE_ENABLED : ( 'persistent' === enqueues_cache_mode() );
+	// Follows the resolved cache mode, but only persists when an external object cache is present:
+	// without one, transients live in the options table, where we measured the persistent layer to be
+	// net-negative versus recomputing. Persistent then transparently behaves like Per-request (the
+	// in-process memo still runs). Override with 'enqueues_is_cache_enabled' to exercise the DB path.
+	$default = ( 'persistent' === enqueues_cache_mode() ) && wp_using_ext_object_cache();
 
 	/**
 	 * Filters whether caching is enabled in the Enqueues plugin.
@@ -142,9 +161,8 @@ function is_cache_enabled(): bool {
  * Determines whether request-level memoisation (O1) is enabled.
  *
  * This memo is in-process only (it dies with the request), so it cannot serve stale data. It is enabled
- * whenever the cache mode is 'request' or 'persistent' (the default mode is 'off', so it is OFF until a
- * mode is chosen). Overridable by the ENQUEUES_REQUEST_MEMO_ENABLED constant and the
- * 'enqueues_is_request_memo_enabled' filter.
+ * whenever the resolved cache mode is 'request' or 'persistent' (the default mode is 'off', so it is
+ * OFF until a mode is chosen). The 'enqueues_is_request_memo_enabled' filter has the final say.
  *
  * @return bool True if request memoisation is enabled.
  */
@@ -156,7 +174,7 @@ function is_request_memo_enabled(): bool {
 		return $enabled;
 	}
 
-	$default = defined( 'ENQUEUES_REQUEST_MEMO_ENABLED' ) ? (bool) ENQUEUES_REQUEST_MEMO_ENABLED : ( 'off' !== enqueues_cache_mode() );
+	$default = ( 'off' !== enqueues_cache_mode() );
 
 	/**
 	 * Filters whether request-level memoisation is enabled.
@@ -402,8 +420,8 @@ function enqueues_profile_request(): array {
  * Folds the current request's profiler accumulator into the persisted stats + ring buffer.
  *
  * Hooked on 'shutdown' only when profiling is on. Writes a single autoload=off option once per
- * profiled request (never on the hot path), keeping the most recent ENQUEUES_PROFILE_LOG_MAX (20)
- * per-request records plus cumulative per-bucket totals.
+ * profiled request (never on the hot path), keeping the most recent enqueues_profile_log_max()
+ * per-request records (default 20) plus cumulative per-bucket totals.
  *
  * @return void
  */

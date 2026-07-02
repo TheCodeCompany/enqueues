@@ -95,14 +95,18 @@ This page lists **all** filters and actions available in the Enqueues MU Plugin,
 
 ## Caching & Performance
 
-See [Performance: Asset Caching & the Settings Page](PERFORMANCE.md) for the full guide — the O1 request memo, the O2 persistent cache, the **Settings → Enqueues** page, the build signature, and measuring impact in production.
+See [Performance: Asset Caching & the Settings Page](PERFORMANCE.md) for the full guide — the **Asset cache mode** selector (Off / Per-request / Persistent, off by default), the build signature, the cache profiler, and measuring impact in production.
 
 | Filter/Action                      | Summary                                         | Docs                                         |
 |:-----------------------------------|:------------------------------------------------|:---------------------------------------------|
+| `enqueues_cache_mode`              | Final say on the cache mode (`off` \| `request` \| `persistent`) — the single source of truth. | [Performance](PERFORMANCE.md#constants-filters--functions) |
 | `enqueues_is_cache_enabled`        | Final say on whether the persistent cache (O2) is enabled. | [Performance](PERFORMANCE.md#constants-filters--functions) |
 | `enqueues_is_request_memo_enabled` | Final say on whether the request memo (O1) is enabled.     | [Performance](PERFORMANCE.md#constants-filters--functions) |
 | `enqueues_cache_ttl`               | Filter the persistent cache time-to-live (seconds). | [Performance](PERFORMANCE.md#constants-filters--functions) |
 | `enqueues_build_signature`         | Override the build signature (e.g. return a deploy SHA). | [Performance](PERFORMANCE.md#the-build-signature--invalidation) |
+| `enqueues_is_profile_enabled`      | Final say on whether the cache profiler is on. | [Performance](PERFORMANCE.md#the-cache-profiler) |
+| `enqueues_profile_log_max`         | The profiler ring-buffer size (10–200). | [Performance](PERFORMANCE.md#the-cache-profiler) |
+| `enqueues_settings_capability`     | Capability required for the Settings → Enqueues page (default `manage_options`). | [Performance](PERFORMANCE.md#the-settings-page) |
 | `enqueues_cache_flushed`           | Action fired after `flush_enqueues_cache()` completes. | [Performance](PERFORMANCE.md#constants-filters--functions) |
 
 ---

@@ -42,9 +42,8 @@ Enqueues MU Plugin is a modern, flexible system for automating and customizing a
 - [Block Editor Integration](docs/BLOCK-EDITOR.md): Register custom blocks, block categories, and block editor plugins with fine-grained control.
 - [Webpack Automation (Optional)](docs/WEBPACK.md): Dynamically generate Webpack entries, copy assets, and extract dependencies for a seamless build process. **All Webpack features are optional and can be used independently.**
 - [Inline Asset Registration](docs/INLINE-ASSETS.md): Easily add critical CSS/JS directly to your page head or footer.
-- [Performance & Caching](docs/PERFORMANCE.md): Toggle in-process (O1) and persistent (O2) asset caching from a Settings → Enqueues page, with content-hash build-signature invalidation.
+- [Performance & Caching](docs/PERFORMANCE.md): Choose an asset cache mode (Off / Per-request / Persistent, off by default) on a Settings → Enqueues page, with content-hash build-signature invalidation and a built-in cache profiler.
 - [Extensive Filters & Extension Points](docs/THEME-ASSETS.md#filters-for-theme-asset-loading): Customize every aspect of asset loading and block integration.
-- [Troubleshooting & Advanced Usage](docs/TROUBLESHOOTING.md): Solutions for common issues and advanced scenarios.
 
 ## QUICK START
 1. **Install via Composer**
@@ -78,7 +77,6 @@ Enqueues MU Plugin is a modern, flexible system for automating and customizing a
 - [Inline Asset Registration →](docs/INLINE-ASSETS.md)
 - [Performance & Caching →](docs/PERFORMANCE.md)
 - [All Filters & Usage →](docs/THEME-ASSETS.md#filters-for-theme-asset-loading)
-- [Troubleshooting →](docs/TROUBLESHOOTING.md)
 
 ## DETAILED FILTERS & ADVANCED OPTIONS
 For a full list of filters, advanced configuration, and real-world usage, see the relevant sections in each doc in the `/docs/` folder. 
