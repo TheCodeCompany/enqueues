@@ -184,7 +184,7 @@ function get_asset_page_type_file_data(
 			$minified           = $data['minified'];
 			$handle             = $data['handle'];
 			$asset_php_filename = $minified ? "{$handle}.min.asset.php" : "{$handle}.asset.php";
-			$asset_php_path     = "{$directory}/dist/js/{$asset_php_filename}";
+			$asset_php_path     = "{$directory}/{$dist_directory_part}/{$directory_part}/{$asset_php_filename}";
 			$data['asset_php']  = file_exists( $asset_php_path ) ? include $asset_php_path : [];
 		}
 
@@ -214,7 +214,7 @@ function get_asset_page_type_file_data(
 			$minified           = $data['minified'];
 			$handle             = $data['handle'];
 			$asset_php_filename = $minified ? "{$handle}.min.asset.php" : "{$handle}.asset.php";
-			$asset_php_path     = "{$directory}/dist/js/{$asset_php_filename}";
+			$asset_php_path     = "{$directory}/{$dist_directory_part}/{$directory_part}/{$asset_php_filename}";
 			$data['asset_php']  = file_exists( $asset_php_path ) ? include $asset_php_path : [];
 		}
 

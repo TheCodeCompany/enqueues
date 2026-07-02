@@ -51,7 +51,7 @@ function is_environment_match( $env ) {
 
 	// Bail early if this site has defined a custom function.
 	if ( function_exists( 'is_environment_match' ) ) {
-		return \is_environment_match();
+		return \is_environment_match( $env );
 	}
 
 	$env_type = get_environment_type();
@@ -198,7 +198,7 @@ function is_development() {
 function is_local() {
 
 	// Bail early if this site has defined a custom function.
-	if ( function_exists( 'Enqueues\\is_local' ) ) {
+	if ( function_exists( 'is_local' ) ) {
 		return \is_local();
 	}
 
