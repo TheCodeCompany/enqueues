@@ -22,6 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - New filters: `enqueues_is_request_memo_enabled`, `enqueues_build_signature`, `enqueues_cache_mode`; new action `enqueues_cache_flushed`; new constant `ENQUEUES_CACHE_MODE` (the single config-as-code override).
   - The persistent cache key is computed lazily, so there is no build-signature cost when caching is off.
   - See [docs/PERFORMANCE.md](docs/PERFORMANCE.md), including guidance on measuring impact in production without New Relic.
+  - **WP-CLI** (`wp enqueues`): `flush` (post-deploy cache invalidation for git/rsync deploys that don't fire the `switch_theme` / `upgrader_process_complete` auto-flush hooks), `signature` (print the build signature), `cache-mode [<mode>]` (get/set off|request|persistent), and `status` (effective state incl. object-cache presence). Registration is guarded by `WP_CLI`, so it adds zero front-end cost.
 
 ### Changed
 - **Config model** — the Settings → Enqueues **cache mode is the single source of truth**, resolved in one place (`enqueues_cache_mode()`). `is_cache_enabled()` and `is_request_memo_enabled()` now derive purely from that mode and no longer read any constant independently, so the settings page and the runtime can no longer disagree. When a constant pins the mode, **all three** radio options are locked (not just Persistent) and the page states which constant is in force and the effective mode.
