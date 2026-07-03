@@ -170,23 +170,28 @@ function get_asset_page_type_file_data(
 		display_maybe_missing_local_warning( '', $missing_local_warning );
 	}
 
-	if ( ! empty( $compiled_file_path ) ) {
-		$data = [ 
-			'handle'   => sanitize_key( $file_name ),
-			'url'      => esc_url( "{$directory_uri}{$compiled_file_path}" ),
-			'file'     => esc_url( "{$directory}{$compiled_file_path}" ),
-			'ver'      => filemtime( "{$directory}{$compiled_file_path}" ),
-			'minified' => false !== strpos( $compiled_file_path, '.min.' ),
+	// Build the asset-data array for a resolved compiled file. Shared by the primary and fallback
+	// branches so the shape (and the JS .asset.php read) is defined once.
+	$build_asset_data = function ( string $name, string $compiled_path ) use ( $directory, $directory_uri, $dist_directory_part, $directory_part, $file_ext ): array {
+		$data = [
+			'handle'   => sanitize_key( $name ),
+			'url'      => esc_url( "{$directory_uri}{$compiled_path}" ),
+			'file'     => esc_url( "{$directory}{$compiled_path}" ),
+			'ver'      => filemtime( "{$directory}{$compiled_path}" ),
+			'minified' => false !== strpos( $compiled_path, '.min.' ),
 		];
 
-		// For JS assets, attempt to load the .asset.php file and add to the return array.
 		if ( 'js' === $file_ext ) {
-			$minified           = $data['minified'];
-			$handle             = $data['handle'];
-			$asset_php_filename = $minified ? "{$handle}.min.asset.php" : "{$handle}.asset.php";
+			$asset_php_filename = $data['minified'] ? "{$data['handle']}.min.asset.php" : "{$data['handle']}.asset.php";
 			$asset_php_path     = "{$directory}/{$dist_directory_part}/{$directory_part}/{$asset_php_filename}";
 			$data['asset_php']  = enqueues_read_asset_php( $asset_php_path );
 		}
+
+		return $data;
+	};
+
+	if ( ! empty( $compiled_file_path ) ) {
+		$data = $build_asset_data( $file_name, $compiled_file_path );
 
 		if ( $use_memo ) {
 			$memo[ $memo_key ] = $data;
@@ -201,22 +206,7 @@ function get_asset_page_type_file_data(
 	}
 
 	if ( ! empty( $compiled_file_path ) ) {
-		$data = [ 
-			'handle'   => sanitize_key( $fallback_file_name ),
-			'url'      => esc_url( "{$directory_uri}{$compiled_file_path}" ),
-			'file'     => esc_url( "{$directory}{$compiled_file_path}" ),
-			'ver'      => filemtime( "{$directory}{$compiled_file_path}" ),
-			'minified' => false !== strpos( $compiled_file_path, '.min.' ),
-		];
-
-		// For JS assets, attempt to load the .asset.php file and add to the return array.
-		if ( 'js' === $file_ext ) {
-			$minified           = $data['minified'];
-			$handle             = $data['handle'];
-			$asset_php_filename = $minified ? "{$handle}.min.asset.php" : "{$handle}.asset.php";
-			$asset_php_path     = "{$directory}/{$dist_directory_part}/{$directory_part}/{$asset_php_filename}";
-			$data['asset_php']  = enqueues_read_asset_php( $asset_php_path );
-		}
+		$data = $build_asset_data( $fallback_file_name, $compiled_file_path );
 
 		if ( $use_memo ) {
 			$memo[ $memo_key ] = $data;

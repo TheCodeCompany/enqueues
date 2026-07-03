@@ -61,7 +61,7 @@ class EnqueueAssets {
 	 *
 	 * Caching Strategy:
 	 * - This method relies on the caching of allowed page types and templates to reduce repeated file lookups.
-	 * - Cached data is stored using WordPress transients and is invalidated every 24 hours to ensure freshness.
+	 * - When persistent caching is enabled, results are stored in build-signature-namespaced WordPress transients (a deploy invalidates them) with the configured TTL as a backstop.
 	 *
 	 * @return string The file name to be used for loading assets. This can be the slug of the current page template,
 	 *                the current page type if it's in the list of allowed types, or the default main asset file name.
@@ -126,6 +126,35 @@ class EnqueueAssets {
 	}
 
 	/**
+	 * Returns the first candidate asset name that resolves to an existing compiled asset.
+	 *
+	 * Tries each name exactly, then its slugified form, in order -- the shared exact-then-slugified
+	 * match used by all three single-* resolvers.
+	 *
+	 * @param string[] $asset_names Candidate asset names, in priority order.
+	 *
+	 * @return string|null The matched (possibly slugified) asset name, or null if none exist.
+	 */
+	protected function first_matching_asset( array $asset_names ): ?string {
+		foreach ( $asset_names as $asset_name ) {
+			$matched = $this->get_existing_asset_name( $asset_name );
+			if ( $matched ) {
+				return $matched;
+			}
+
+			$slugified = string_slugify( $asset_name );
+			if ( $slugified !== $asset_name ) {
+				$slugified_match = $this->get_existing_asset_name( $slugified );
+				if ( $slugified_match ) {
+					return $slugified_match;
+				}
+			}
+		}
+
+		return null;
+	}
+
+	/**
 	 * Get the post name asset filename for single posts.
 	 *
 	 * @return string|null The asset name if it exists.
@@ -151,25 +180,12 @@ class EnqueueAssets {
 			return null;
 		}
 
-		$post_type_candidates = $this->get_post_type_asset_candidates( $post_type );
-		foreach ( $post_type_candidates as $post_type_candidate ) {
-			$asset_name = "single-{$post_type_candidate}-{$post->post_name}";
-			$matched    = $this->get_existing_asset_name( $asset_name );
+		$asset_names = array_map(
+			fn( $c ) => "single-{$c}-{$post->post_name}",
+			$this->get_post_type_asset_candidates( $post_type )
+		);
 
-			if ( $matched ) {
-				return $matched;
-			}
-
-			$slugified = string_slugify( $asset_name );
-			if ( $slugified !== $asset_name ) {
-				$slugified_match = $this->get_existing_asset_name( $slugified );
-				if ( $slugified_match ) {
-					return $slugified_match;
-				}
-			}
-		}
-
-		return null;
+		return $this->first_matching_asset( $asset_names );
 	}
 
 	/**
@@ -188,25 +204,12 @@ class EnqueueAssets {
 			return null;
 		}
 
-		$post_type_candidates = $this->get_post_type_asset_candidates( $post_type );
-		foreach ( $post_type_candidates as $post_type_candidate ) {
-			$asset_name = "single-{$post_type_candidate}-child";
-			$matched    = $this->get_existing_asset_name( $asset_name );
+		$asset_names = array_map(
+			fn( $c ) => "single-{$c}-child",
+			$this->get_post_type_asset_candidates( $post_type )
+		);
 
-			if ( $matched ) {
-				return $matched;
-			}
-
-			$slugified = string_slugify( $asset_name );
-			if ( $slugified !== $asset_name ) {
-				$slugified_match = $this->get_existing_asset_name( $slugified );
-				if ( $slugified_match ) {
-					return $slugified_match;
-				}
-			}
-		}
-
-		return null;
+		return $this->first_matching_asset( $asset_names );
 	}
 
 	/**
@@ -225,25 +228,12 @@ class EnqueueAssets {
 			return null;
 		}
 
-		$post_type_candidates = $this->get_post_type_asset_candidates( $post_type );
-		foreach ( $post_type_candidates as $post_type_candidate ) {
-			$asset_name = "single-{$post_type_candidate}";
-			$matched    = $this->get_existing_asset_name( $asset_name );
+		$asset_names = array_map(
+			fn( $c ) => "single-{$c}",
+			$this->get_post_type_asset_candidates( $post_type )
+		);
 
-			if ( $matched ) {
-				return $matched;
-			}
-
-			$slugified = string_slugify( $asset_name );
-			if ( $slugified !== $asset_name ) {
-				$slugified_match = $this->get_existing_asset_name( $slugified );
-				if ( $slugified_match ) {
-					return $slugified_match;
-				}
-			}
-		}
-
-		return null;
+		return $this->first_matching_asset( $asset_names );
 	}
 
 	/**
@@ -400,7 +390,7 @@ class EnqueueAssets {
 	 * It also checks registered post types and includes files for them if they exist.
 	 *
 	 * Caching Strategy:
-	 * - Caches the allowed page types and templates for 24 hours using WordPress transients.
+	 * - When persistent caching is enabled, caches the allowed page types and templates in a build-signature-namespaced transient for the configured TTL.
 	 * - The cache is keyed based on the page types and templates to ensure uniqueness.
 	 * - Cache improves performance by avoiding repeated file system lookups on every request.
 	 *

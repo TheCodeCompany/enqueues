@@ -43,6 +43,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Hardening**: compiled `.asset.php` artifacts are read through a new `enqueues_read_asset_php()` that `try/catch (\Throwable)`es the `include` — a truncated/corrupt artifact mid-deploy degrades gracefully (falls back to `filemtime` / empty deps) instead of fataling every request.
 - `get_cache_ttl()` now floors the TTL to 1 hour on the constant/filter paths too (not just the settings sanitiser), so a `0`/negative value can no longer create never-expiring transients that defeat the salt-rotation flush.
 - **PERF**: `get_enqueue_asset_files()` pairs each dist dir with only its own extensions (minified first) and stops at the first hit, instead of testing all four extensions in both dirs — roughly halving the `file_exists()` calls per uncached request (the cross-dir combinations it dropped are structurally impossible in a real build).
+- **Privacy**: the cache profiler stores only the request **path** (query string stripped, length-capped), so visitor PII in query parameters is no longer written to the `enqueues_profile_data` option.
+- Documentation accuracy: corrected the stale "invalidated every 24 hours" caching docblocks (invalidation is by build signature + configurable TTL) and added `cache_mode` to the settings `@return` shape. Internal dedup: the three `single-*` asset resolvers share a `first_matching_asset()` helper, and `get_asset_page_type_file_data()`'s two branches share one asset-data builder (behaviour-identical).
 
 ## [1.3.7] - 2026-05-19
 

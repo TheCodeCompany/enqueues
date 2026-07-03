@@ -12,7 +12,7 @@ namespace Enqueues;
 /**
  * Returns the Enqueues settings array (from the Settings -> Enqueues page), memoised per request.
  *
- * @return array{request_memo: bool, persistent_cache: bool, cache_ttl: int, profile: bool, profile_log_max: int}
+ * @return array{cache_mode?: string, request_memo: bool, persistent_cache: bool, cache_ttl: int, profile: bool, profile_log_max: int}
  */
 function enqueues_get_settings(): array {
 
@@ -503,7 +503,8 @@ function enqueues_profile_persist(): void {
 
 	$log[] = [
 		't'       => time(),
-		'url'     => isset( $_SERVER['REQUEST_URI'] ) ? esc_url_raw( wp_unslash( $_SERVER['REQUEST_URI'] ) ) : '', // phpcs:ignore
+		// Path only (query string dropped) so visitor PII in query params is never warehoused; length-capped.
+		'url'     => isset( $_SERVER['REQUEST_URI'] ) ? esc_url_raw( substr( (string) strtok( wp_unslash( $_SERVER['REQUEST_URI'] ), '?' ), 0, 255 ) ) : '', // phpcs:ignore
 		'hit_ns'  => $req_hit_ns,
 		'miss_ns' => $req_miss_ns,
 		'buckets' => $request,
