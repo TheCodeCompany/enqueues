@@ -15,9 +15,12 @@ const enqueuesMergeWebpackEntries = require('./enqueues-merge-webpack-entries');
  * @description A function to dynamically resolve and group entry points for Webpack configuration.
  */
 const enqueuesBlockEditorWebpackEntries = (rootDir, pathModule, globModule, srcDir = 'src/block-editor') => {
-    // Log for debugging
-    console.log('enqueuesBlockEditorWebpackEntries rootDir:', rootDir);
-    console.log('enqueuesBlockEditorWebpackEntries srcDir:', srcDir);
+    // Verbose logging is opt-in (ENQUEUES_DEBUG) so builds/CI stay quiet and paths are not leaked.
+    const verbose = !!process.env.ENQUEUES_DEBUG;
+    const log = (...args) => { if (verbose) console.log(...args); };
+
+    log('enqueuesBlockEditorWebpackEntries rootDir:', rootDir);
+    log('enqueuesBlockEditorWebpackEntries srcDir:', srcDir);
 
     const safeGlobSync = (pattern) => {
         try {
@@ -81,7 +84,7 @@ const enqueuesBlockEditorWebpackEntries = (rootDir, pathModule, globModule, srcD
 		getBlockEditorEntries('extensions', 'css-view', 'scss'),
 	);
 
-    console.log('Generated Entries from Enqueues Block Editor Webpack Entries:', mergedEntries);
+    log('Generated Entries from Enqueues Block Editor Webpack Entries:', mergedEntries);
 
     return mergedEntries;
 };

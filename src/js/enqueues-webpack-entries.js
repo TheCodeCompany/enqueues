@@ -15,9 +15,14 @@ const enqueuesMergeThemeWebpackEntries = require('./enqueues-merge-webpack-entri
  * @description A function to dynamically resolve and group entry points for Webpack configuration.
  */
 const enqueuesWebpackEntries = (rootDir, pathModule, globModule, srcDirJS = 'src/js', srcDirCSS = 'src/sass', cssFileExt = 'scss') => {
-    console.log('rootDir:', rootDir);
-    console.log('srcDirJS:', srcDirJS);
-    console.log('srcDirCSS:', srcDirCSS);
+    // Verbose logging is opt-in (ENQUEUES_DEBUG) so builds/CI stay quiet and absolute paths are not
+    // leaked into shared CI output. Build errors (safeGlobSync failures) still log unconditionally.
+    const verbose = !!process.env.ENQUEUES_DEBUG;
+    const log = (...args) => { if (verbose) console.log(...args); };
+
+    log('rootDir:', rootDir);
+    log('srcDirJS:', srcDirJS);
+    log('srcDirCSS:', srcDirCSS);
 
     const safeGlobSync = (pattern) => {
         try {
@@ -28,26 +33,35 @@ const enqueuesWebpackEntries = (rootDir, pathModule, globModule, srcDirJS = 'src
         }
     };
 
-    // Use dynamic directories for JS and SCSS files, including one level down
-    const entriesJS = safeGlobSync(pathModule.resolve(rootDir, srcDirJS, '*.js'))
-        .concat(safeGlobSync(pathModule.resolve(rootDir, '*', srcDirJS, '*.js')))
-        .reduce((obj, el) => {
+    // Reduce a list of file paths to an entry map keyed by basename, warning LOUDLY on any collision so
+    // a dropped asset (two files sharing a basename in different dirs) is visible at build time instead
+    // of silently missing in production.
+    const toEntries = (files, label) =>
+        files.reduce((obj, el) => {
             const name = pathModule.parse(el).name;
+            if (Object.prototype.hasOwnProperty.call(obj, name)) {
+                console.warn(`[enqueues] ${label} entry name collision on "${name}": "${obj[name][0]}" is overwritten by "${el}". Rename one so both build.`);
+            }
             obj[name] = [el];
             return obj;
         }, {});
 
-    const entriesCSS = safeGlobSync(pathModule.resolve(rootDir, srcDirCSS, `*.${cssFileExt}`))
-        .concat(safeGlobSync(pathModule.resolve(rootDir, '*', srcDirCSS, `*.${cssFileExt}`)))
-        .reduce((obj, el) => {
-            const name = pathModule.parse(el).name;
-            obj[name] = [el];
-            return obj;
-        }, {});
+    // Use dynamic directories for JS and SCSS files, including one level down
+    const entriesJS = toEntries(
+        safeGlobSync(pathModule.resolve(rootDir, srcDirJS, '*.js'))
+            .concat(safeGlobSync(pathModule.resolve(rootDir, '*', srcDirJS, '*.js'))),
+        'JS'
+    );
+
+    const entriesCSS = toEntries(
+        safeGlobSync(pathModule.resolve(rootDir, srcDirCSS, `*.${cssFileExt}`))
+            .concat(safeGlobSync(pathModule.resolve(rootDir, '*', srcDirCSS, `*.${cssFileExt}`))),
+        'CSS'
+    );
 
     const entries = enqueuesMergeThemeWebpackEntries(entriesJS, entriesCSS);
 
-    console.log('Generated Entries from Enqueues Webpack Entries:', entries);
+    log('Generated Entries from Enqueues Webpack Entries:', entries);
 
     return entries;
 };
