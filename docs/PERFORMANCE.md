@@ -111,6 +111,29 @@ Toggle: the `profile` setting, the `ENQUEUES_PROFILE_ENABLED` constant, or the
 > directional estimate. Totals are a lower bound under concurrency (each request writes its own samples,
 > so on multi-worker hosts some are overwritten).
 
+## Build-time manifest (deploy-generated, fastest)
+
+The cache tiers above resolve asset metadata *at runtime* (scan, then cache the result). The manifest
+resolves the most expensive piece — the recursive theme-tree scan for template files — **at
+build/deploy time** instead, so production requests read one opcache-cached PHP file and never walk the
+theme tree.
+
+- **Generate it in your deploy pipeline**, after building assets: `wp enqueues manifest build`. It
+  writes `{theme}/dist/enqueues-manifest.php` (the template list + the current build signature).
+- **It supersedes the scan/transient** for `theme_template_files` when present; everything else is
+  unchanged.
+- **Safe by default**: ignored in local dev (`is_local()` — assets change live), and if its stamped
+  build signature no longer matches the current build (a deploy changed assets without rebuilding the
+  manifest) it is ignored and the runtime scan takes over. A stale manifest degrades to
+  correct-but-slower, never to stale output.
+- **Opt-in per site**: with no manifest file the framework behaves exactly as before. Filters:
+  `enqueues_manifest_enabled` (default true), `enqueues_manifest_path`, and
+  `enqueues_manifest_validate_signature` (default true — set false to skip the signature check for a
+  little more speed on sites that always rebuild the manifest on deploy).
+- CLI: `wp enqueues manifest build | clear | status`.
+
+Recommended deploy-step order: build assets → `wp enqueues manifest build` → `wp enqueues flush`.
+
 ## Constants, filters & functions
 
 ### Constants

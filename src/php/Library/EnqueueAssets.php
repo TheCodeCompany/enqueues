@@ -22,6 +22,7 @@ use function Enqueues\enqueues_profile_record;
 use function Enqueues\string_slugify;
 use function Enqueues\enqueues_theme_css_dist_dir;
 use function Enqueues\enqueues_theme_js_dist_dir;
+use function Enqueues\enqueues_manifest_get;
 
 /**
  * Class responsible for enqueuing the theme's main stylesheet and scripts based on page type, template, or post type.
@@ -471,7 +472,17 @@ class EnqueueAssets {
 
 		$profile = is_profile_enabled();
 
-		// Try to get the cached value first (skip the build-signature work entirely when off).
+		// Build-time manifest (M0): a deploy-generated snapshot skips the scan and the transient entirely.
+		$manifest_t0        = $profile ? hrtime( true ) : 0;
+		$manifest_templates = enqueues_manifest_get( 'templates' );
+		if ( is_array( $manifest_templates ) ) {
+			if ( $profile ) {
+				enqueues_profile_record( 'theme_template_files', 'hit', (int) ( hrtime( true ) - $manifest_t0 ) );
+			}
+			return $manifest_templates;
+		}
+
+		// Persistent cache (O2). Try the cached value first (skip the build-signature work when off).
 		$use_cache = is_cache_enabled();
 		$cache_key = $use_cache ? enqueues_cache_key( 'theme_template_files' ) : '';
 		// Time ONLY the cache read. The build-signature/key derivation above is shared per-request
@@ -489,7 +500,33 @@ class EnqueueAssets {
 		}
 
 		// Profiler: time the filesystem scan on its own — the without-cache cost the previous system paid.
-		$compute_t0 = $profile ? hrtime( true ) : 0;
+		$compute_t0     = $profile ? hrtime( true ) : 0;
+		$template_files = $this->scan_theme_template_files( $theme_directory );
+		if ( $profile ) {
+			enqueues_profile_record( 'theme_template_files', 'miss', (int) ( hrtime( true ) - $compute_t0 ) );
+		}
+
+		// Cache the results for the configured TTL.
+		if ( $use_cache ) {
+			set_transient( $cache_key, $template_files, get_cache_ttl() );
+		}
+
+		return $template_files;
+	}
+
+	/**
+	 * Freshly scans the theme tree for template file basenames (no manifest, no cache).
+	 *
+	 * The raw filesystem walk shared by get_theme_template_files() and the manifest builder. Skip
+	 * directories are pruned at the DIRECTORY level via RecursiveCallbackFilterIterator so the iterator
+	 * never descends into build-tools/ dist/ node_modules/ vendor/ (tens of thousands of inodes on a dev
+	 * checkout otherwise); output is unchanged from the pre-prune per-file check.
+	 *
+	 * @param string $theme_directory The path to the theme directory.
+	 *
+	 * @return array List of template filenames (without extensions).
+	 */
+	protected function scan_theme_template_files( string $theme_directory ): array {
 
 		$template_files = [];
 
@@ -507,12 +544,6 @@ class EnqueueAssets {
 		 */
 		$directories = apply_filters( 'enqueues_theme_skip_scan_directories', $directories );
 
-		// Prune the skip directories at the DIRECTORY level so the iterator never descends into them.
-		// Previously the skip list was a per-FILE substring check applied AFTER RecursiveDirectoryIterator
-		// had already recursed into and stat()'d every entry under build-tools/, node_modules/, dist/,
-		// vendor/ — on a dev checkout that is tens of thousands of inodes walked on every uncached call
-		// (the dominant cost the persistent cache was hiding). A RecursiveCallbackFilterIterator that
-		// rejects those directories skips the descent entirely; output is unchanged.
 		$dir_iterator = new RecursiveDirectoryIterator( $theme_directory, RecursiveDirectoryIterator::SKIP_DOTS );
 		$filtered     = new RecursiveCallbackFilterIterator(
 			$dir_iterator,
@@ -553,16 +584,17 @@ class EnqueueAssets {
 			}
 		}
 
-		if ( $profile ) {
-			enqueues_profile_record( 'theme_template_files', 'miss', (int) ( hrtime( true ) - $compute_t0 ) );
-		}
-
-		// Cache the results for the configured TTL.
-		if ( $use_cache ) {
-			set_transient( $cache_key, $template_files, get_cache_ttl() );
-		}
-
 		return $template_files;
+	}
+
+	/**
+	 * Public accessor returning a fresh scan of the theme template file list. Used by the manifest
+	 * builder (`wp enqueues manifest build`) to snapshot the list without hitting the manifest or cache.
+	 *
+	 * @return array
+	 */
+	public function build_theme_template_files_list(): array {
+		return $this->scan_theme_template_files( get_template_directory() );
 	}
 
 	/**

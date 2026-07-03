@@ -16,4 +16,5 @@ namespace Enqueues;
 
 if ( defined( 'WP_CLI' ) && WP_CLI && class_exists( '\WP_CLI' ) ) {
 	\WP_CLI::add_command( 'enqueues', \Enqueues\Cli\CacheCommand::class );
+	\WP_CLI::add_command( 'enqueues manifest', \Enqueues\Cli\ManifestCommand::class );
 }
