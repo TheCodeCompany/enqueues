@@ -17,7 +17,7 @@
 $specific_file_load_order = [];
 
 // Get a list of all PHP files in the current directory.
-$function_files = glob( __DIR__ . DIRECTORY_SEPARATOR . '*.php' );
+$function_files = glob( __DIR__ . DIRECTORY_SEPARATOR . '*.php' ) ?: [];
 
 // If there are files that need to be loaded in a specific order, load them first.
 if ( $specific_file_load_order ) {

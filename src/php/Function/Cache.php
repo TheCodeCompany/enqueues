@@ -192,7 +192,7 @@ function is_request_memo_enabled(): bool {
  * This value determines how long cache entries should be stored before they are invalidated.
  * The TTL is set using the `ENQUEUES_CACHE_TTL` constant or can be customized via the 'enqueues_cache_ttl' filter.
  *
- * @return int The TTL in seconds. Defaults to 1 day (DAY_IN_SECONDS).
+ * @return int The TTL in seconds, floored to 1 hour. Defaults to 1 day (DAY_IN_SECONDS).
  */
 function get_cache_ttl(): int {
 
@@ -203,7 +203,37 @@ function get_cache_ttl(): int {
 	 *
 	 * @param int $cache_ttl The TTL in seconds. Defaults to 1 day (DAY_IN_SECONDS).
 	 */
-	return (int) apply_filters( 'enqueues_cache_ttl', $default );
+	$ttl = (int) apply_filters( 'enqueues_cache_ttl', $default );
+
+	// Floor to 1 hour regardless of how the value was supplied. A zero/negative TTL makes set_transient()
+	// store entries that NEVER expire, which breaks the salt-rotation flush (orphaned entries would never
+	// be reclaimed). The settings sanitiser clamps the stored value; this guards the constant/filter paths.
+	return max( HOUR_IN_SECONDS, $ttl );
+}
+
+/**
+ * Safely reads a compiled `.asset.php` build artifact, returning its array (or [] on any failure).
+ *
+ * These files are PHP that gets include()d. A truncated/corrupt one mid-deploy is a ParseError, and an
+ * unguarded include would fatal every request; catching \Throwable degrades one bad artifact gracefully
+ * instead. Also normalises a non-array return to [].
+ *
+ * @param string $path Absolute path to the .asset.php file.
+ *
+ * @return array The parsed asset data (typically ['version' => ..., 'dependencies' => [...]]), or [].
+ */
+function enqueues_read_asset_php( string $path ): array {
+	if ( ! file_exists( $path ) ) {
+		return [];
+	}
+
+	try {
+		$asset = include $path;
+	} catch ( \Throwable $e ) {
+		return [];
+	}
+
+	return is_array( $asset ) ? $asset : [];
 }
 
 /**
@@ -255,8 +285,8 @@ function get_enqueues_build_signature(): string {
 		}
 		sort( $files );
 		foreach ( $files as $file ) {
-			$asset    = include $file;
-			$fragment = ( is_array( $asset ) && ! empty( $asset['version'] ) ) ? (string) $asset['version'] : (string) filemtime( $file );
+			$asset    = enqueues_read_asset_php( $file );
+			$fragment = ! empty( $asset['version'] ) ? (string) $asset['version'] : (string) filemtime( $file );
 			$parts[]  = basename( dirname( $file ) ) . '/' . basename( $file ) . ':' . $fragment;
 		}
 	}

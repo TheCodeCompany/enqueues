@@ -625,12 +625,22 @@ class EnqueueAssets {
 		 */
 		$theme_js_dist_dir = apply_filters( 'enqueues_theme_js_src_dir', 'dist/js' );
 
-		foreach ( [ $theme_css_dist_dir, $theme_js_dist_dir ] as $theme_asset_src_dir ) {
+		// Each dist dir only ever holds its own asset type, so pair the dir with just its extensions
+		// (minified first) and stop at the first hit per file. This avoids the structurally-guaranteed
+		// misses of the old loop (which tested .js under dist/css and vice versa) and its duplicate
+		// appends -- halving the file_exists() calls. A list of pairs (not a dir-keyed map) keeps both
+		// extension sets even if a site filters both dirs to the same path.
+		$dir_ext_pairs = [
+			[ $theme_css_dist_dir, [ 'min.css', 'css' ] ],
+			[ $theme_js_dist_dir, [ 'min.js', 'js' ] ],
+		];
+
+		foreach ( $dir_ext_pairs as [ $theme_asset_src_dir, $exts ] ) {
 			foreach ( $known_files as $file ) {
-				foreach ( [ 'min.css', 'min.js', 'css', 'js' ] as $ext ) {
-					$enqueue_asset_path = "{$theme_directory}/{$theme_asset_src_dir}/{$file}.{$ext}";
-					if ( file_exists( $enqueue_asset_path ) ) {
+				foreach ( $exts as $ext ) {
+					if ( file_exists( "{$theme_directory}/{$theme_asset_src_dir}/{$file}.{$ext}" ) ) {
 						$enqueue_asset_files[] = $file;
+						break;
 					}
 				}
 			}

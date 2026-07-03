@@ -38,6 +38,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `is_local()` host-override guard checked its own namespaced name (`Enqueues\is_local`) — always true — then called a global `is_local()` the plugin never defines: a fatal on any site without one, and the `is_environment_match( 'local' )` fallback was unreachable. It now checks the global name like the other environment helpers.
 - `is_environment_match()` now forwards `$env` when delegating to a site-defined global override; previously it called the global with no arguments (`ArgumentCountError` on PHP 8).
 - `get_asset_page_type_file_data()` now resolves `.asset.php` files under the filtered dist directory and directory part (matching where the compiled JS was found), instead of a hardcoded `dist/js` path that ignored the `enqueues_asset_theme_dist_directory` filter.
+- **Hardening**: `glob()` results are coalesced to `[]` before `array_filter()` / `foreach` (block registration, plugin/extension assets, the function autoloader), so a `glob()` failure (unreadable dir / open_basedir) can no longer throw an uncatchable `TypeError` and white-screen the site on `init`.
+- **Hardening**: compiled `.asset.php` artifacts are read through a new `enqueues_read_asset_php()` that `try/catch (\Throwable)`es the `include` — a truncated/corrupt artifact mid-deploy degrades gracefully (falls back to `filemtime` / empty deps) instead of fataling every request.
+- `get_cache_ttl()` now floors the TTL to 1 hour on the constant/filter paths too (not just the settings sanitiser), so a `0`/negative value can no longer create never-expiring transients that defeat the salt-rotation flush.
+- **PERF**: `get_enqueue_asset_files()` pairs each dist dir with only its own extensions (minified first) and stops at the first hit, instead of testing all four extensions in both dirs — roughly halving the `file_exists()` calls per uncached request (the cross-dir combinations it dropped are structurally impossible in a real build).
 
 ## [1.3.7] - 2026-05-19
 

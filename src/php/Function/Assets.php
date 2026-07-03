@@ -185,7 +185,7 @@ function get_asset_page_type_file_data(
 			$handle             = $data['handle'];
 			$asset_php_filename = $minified ? "{$handle}.min.asset.php" : "{$handle}.asset.php";
 			$asset_php_path     = "{$directory}/{$dist_directory_part}/{$directory_part}/{$asset_php_filename}";
-			$data['asset_php']  = file_exists( $asset_php_path ) ? include $asset_php_path : [];
+			$data['asset_php']  = enqueues_read_asset_php( $asset_php_path );
 		}
 
 		if ( $use_memo ) {
@@ -215,7 +215,7 @@ function get_asset_page_type_file_data(
 			$handle             = $data['handle'];
 			$asset_php_filename = $minified ? "{$handle}.min.asset.php" : "{$handle}.asset.php";
 			$asset_php_path     = "{$directory}/{$dist_directory_part}/{$directory_part}/{$asset_php_filename}";
-			$data['asset_php']  = file_exists( $asset_php_path ) ? include $asset_php_path : [];
+			$data['asset_php']  = enqueues_read_asset_php( $asset_php_path );
 		}
 
 		if ( $use_memo ) {

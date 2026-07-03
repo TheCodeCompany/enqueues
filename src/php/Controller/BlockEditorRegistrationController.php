@@ -427,7 +427,7 @@ class BlockEditorRegistrationController extends Controller {
 
 		$ns = get_block_editor_namespace();
 
-		foreach ( array_filter( glob( "{$blocks_root}/*" ), 'is_dir' ) as $block_dir ) {
+		foreach ( array_filter( glob( "{$blocks_root}/*" ) ?: [], 'is_dir' ) as $block_dir ) {
 			$block_name    = basename( $block_dir );
 			$metadata_file = "{$blocks_root}/{$block_name}/block.json";
 
@@ -687,7 +687,7 @@ class BlockEditorRegistrationController extends Controller {
 		$block_editor_dist_dir_path = get_block_editor_dist_dir();
 		$block_editor_namespace     = get_block_editor_namespace();
 		$assets_root                = "{$directory}{$block_editor_dist_dir_path}/{$type}";
-		$enqueue_asset_dirs         = is_dir( $assets_root ) ? array_filter( glob( "{$assets_root}/*" ), 'is_dir' ) : [];
+		$enqueue_asset_dirs         = is_dir( $assets_root ) ? array_filter( glob( "{$assets_root}/*" ) ?: [], 'is_dir' ) : [];
 
 		foreach ( $enqueue_asset_dirs as $enqueue_asset_dir ) {
 			$foldername = basename( $enqueue_asset_dir );
