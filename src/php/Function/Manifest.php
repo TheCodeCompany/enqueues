@@ -98,14 +98,17 @@ function enqueues_manifest_get( string $key ) {
  * @return array
  */
 function enqueues_manifest_generate(): array {
-	$assets    = new \Enqueues\Library\EnqueueAssets();
-	$templates = $assets->build_theme_template_files_list();
+	$assets         = new \Enqueues\Library\EnqueueAssets();
+	$templates      = $assets->build_theme_template_files_list();
+	$blocks         = new \Enqueues\Controller\BlockEditorRegistrationController();
+	$block_versions = $blocks->build_block_version_map();
 
 	return [
 		'enqueues_manifest' => true,
 		'signature'         => get_enqueues_build_signature(),
 		'generated'         => time(),
 		'templates'         => array_values( $templates ),
+		'block_versions'    => $block_versions,
 	];
 }
 

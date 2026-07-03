@@ -57,6 +57,7 @@ use function Enqueues\get_block_editor_namespace;
 use function Enqueues\get_block_editor_dist_dir;
 use function Enqueues\get_block_editor_categories;
 use function Enqueues\string_camelcaseify;
+use function Enqueues\enqueues_manifest_get;
 
 /**
  * Controller that integrates with the Block Editor (Gutenberg) to:
@@ -259,6 +260,20 @@ class BlockEditorRegistrationController extends Controller {
 			return $this->asset_version_cache[ $block_slug ];
 		}
 
+		// M0: build-time manifest — a deploy-generated version map covers every block, skipping the O2
+		// read and the filemtime compute entirely.
+		$manifest_t0       = $profile ? hrtime( true ) : 0;
+		$manifest_versions = enqueues_manifest_get( 'block_versions' );
+		if ( is_array( $manifest_versions ) && array_key_exists( $block_slug, $manifest_versions ) ) {
+			if ( $use_memo ) {
+				$this->asset_version_cache[ $block_slug ] = $manifest_versions[ $block_slug ];
+			}
+			if ( $profile ) {
+				enqueues_profile_record( 'block_version_map', 'hit', (int) ( hrtime( true ) - $manifest_t0 ) );
+			}
+			return $manifest_versions[ $block_slug ];
+		}
+
 		// O2: serve from the cross-request map (one object-cache read covers every block) if enabled.
 		// Recorded per block: the single real map read happens on the first block (inside
 		// load_persistent_version_map), later blocks are free array_key_exists() lookups, so the per-block
@@ -280,6 +295,37 @@ class BlockEditorRegistrationController extends Controller {
 
 		// Profiler: time the per-block version compute (the filemtime storm) — the without-cache cost.
 		$compute_t0 = $profile ? hrtime( true ) : 0;
+
+		$version = $this->compute_block_version( $block_slug, $metadata );
+
+		if ( $profile ) {
+			enqueues_profile_record( 'block_version_map', 'miss', (int) ( hrtime( true ) - $compute_t0 ) );
+		}
+
+		if ( $use_memo ) {
+			$this->asset_version_cache[ $block_slug ] = $version;
+		}
+
+		// Accumulate freshly-computed versions for the persistent (O2) map.
+		if ( is_cache_enabled() ) {
+			$this->load_persistent_version_map();
+			$this->persistent_version_map[ $block_slug ] = $version;
+			$this->version_map_dirty                     = true;
+		}
+
+		return $version;
+	}
+
+	/**
+	 * Computes a block's cache-bust version from the filemtimes of its compiled assets (no cache /
+	 * manifest / memo). Shared by get_block_asset_version() and the manifest builder.
+	 *
+	 * @param string $block_slug The block folder slug.
+	 * @param array  $metadata   The block metadata (from block.json).
+	 *
+	 * @return string|int An md5 of the asset mtimes, or 0 when the block has no compiled assets.
+	 */
+	private function compute_block_version( string $block_slug, array $metadata ): string|int {
 
 		$directory                  = get_template_directory();
 		$block_editor_dist_dir_path = ltrim( get_block_editor_dist_dir(), '/' );
@@ -326,24 +372,44 @@ class BlockEditorRegistrationController extends Controller {
 			}
 		}
 
-		$version = empty( $version_parts ) ? 0 : md5( implode( '|', $version_parts ) );
+		return empty( $version_parts ) ? 0 : md5( implode( '|', $version_parts ) );
+	}
 
-		if ( $profile ) {
-			enqueues_profile_record( 'block_version_map', 'miss', (int) ( hrtime( true ) - $compute_t0 ) );
+	/**
+	 * Builds the full block version map ({slug} => version) by scanning every block fresh, used by the
+	 * manifest builder (`wp enqueues manifest build`). Keyed by the same slug the runtime lookup uses
+	 * (the last segment of the block.json `name`).
+	 *
+	 * @return array<string, string|int>
+	 */
+	public function build_block_version_map(): array {
+
+		$directory                  = get_template_directory();
+		$block_editor_dist_dir_path = get_block_editor_dist_dir();
+		$blocks_root                = "{$directory}{$block_editor_dist_dir_path}/blocks";
+		$map                        = [];
+
+		if ( ! is_dir( $blocks_root ) ) {
+			return $map;
 		}
 
-		if ( $use_memo ) {
-			$this->asset_version_cache[ $block_slug ] = $version;
+		foreach ( array_filter( glob( "{$blocks_root}/*" ) ?: [], 'is_dir' ) as $block_dir ) {
+			$metadata_file = "{$block_dir}/block.json";
+			if ( ! file_exists( $metadata_file ) ) {
+				continue;
+			}
+
+			$metadata = json_decode( (string) file_get_contents( $metadata_file ), true );
+			if ( ! is_array( $metadata ) || empty( $metadata['name'] ) ) {
+				continue;
+			}
+
+			$block_parts        = explode( '/', (string) $metadata['name'] );
+			$block_slug         = end( $block_parts );
+			$map[ $block_slug ] = $this->compute_block_version( $block_slug, $metadata );
 		}
 
-		// Accumulate freshly-computed versions for the persistent (O2) map.
-		if ( is_cache_enabled() ) {
-			$this->load_persistent_version_map();
-			$this->persistent_version_map[ $block_slug ] = $version;
-			$this->version_map_dirty                     = true;
-		}
-
-		return $version;
+		return $map;
 	}
 
 	/**

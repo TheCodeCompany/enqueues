@@ -114,14 +114,14 @@ Toggle: the `profile` setting, the `ENQUEUES_PROFILE_ENABLED` constant, or the
 ## Build-time manifest (deploy-generated, fastest)
 
 The cache tiers above resolve asset metadata *at runtime* (scan, then cache the result). The manifest
-resolves the most expensive piece — the recursive theme-tree scan for template files — **at
-build/deploy time** instead, so production requests read one opcache-cached PHP file and never walk the
-theme tree.
+resolves the most expensive filesystem work — the recursive theme-tree scan for template files, plus
+the per-block version `filemtime` compute — **at build/deploy time** instead, so production requests
+read one opcache-cached PHP file and never walk the theme tree or stat block assets.
 
 - **Generate it in your deploy pipeline**, after building assets: `wp enqueues manifest build`. It
   writes `{theme}/dist/enqueues-manifest.php` (the template list + the current build signature).
-- **It supersedes the scan/transient** for `theme_template_files` when present; everything else is
-  unchanged.
+- **It supersedes the scan/transient** for `theme_template_files` and the block version map when
+  present; everything else is unchanged.
 - **Safe by default**: ignored in local dev (`is_local()` — assets change live), and if its stamped
   build signature no longer matches the current build (a deploy changed assets without rebuilding the
   manifest) it is ignored and the runtime scan takes over. A stale manifest degrades to
