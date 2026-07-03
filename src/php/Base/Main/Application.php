@@ -91,36 +91,42 @@ class Application {
 	 */
 	public function setup_controllers() {
 
-		// Set config.
-		foreach ( $this->controllers as $controller ) {
+		// Phase 1: set config on every controller BEFORE any set_up (so a controller's set_up can rely on
+		// another controller's config). Each filter is a swap point -- return a replacement to swap the
+		// controller -- and the result is written back so the swap is used consistently in phase 2.
+		foreach ( $this->controllers as $i => $controller ) {
 
 			/**
-			 * Apply filters to the controller before we set the config.
+			 * Filter the controller before its config is set. Return a replacement instance to swap it.
 			 */
 			$controller = apply_filters( 'base_pre_controller_set_config', $controller );
 
 			$controller->set_config_instance( $this->config );
 
 			/**
-			 * Apply filters to the controller after we set the config.
+			 * Filter the controller after its config is set. Return a replacement instance to swap it.
 			 */
 			$controller = apply_filters( 'base_post_controller_set_config', $controller );
+
+			$this->controllers[ $i ] = $controller;
 		}
 
-		// Set up each controller.
-		foreach ( $this->controllers as $controller ) {
+		// Phase 2: set up each controller (using any controller swapped in phase 1).
+		foreach ( $this->controllers as $i => $controller ) {
 
 			/**
-			 * Apply filters to the controller before we set it up.
+			 * Filter the controller before it is set up. Return a replacement instance to swap it.
 			 */
 			$controller = apply_filters( 'base_pre_controller_set_up', $controller );
 
 			$controller->set_up();
 
 			/**
-			 * Apply filters to the controller after we set it up.
+			 * Filter the controller after it is set up. Return a replacement instance to swap it.
 			 */
 			$controller = apply_filters( 'base_post_controller_set_up', $controller );
+
+			$this->controllers[ $i ] = $controller;
 		}
 	}
 

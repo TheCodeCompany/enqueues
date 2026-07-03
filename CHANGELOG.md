@@ -49,6 +49,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **PERF**: `get_enqueue_asset_files()` pairs each dist dir with only its own extensions (minified first) and stops at the first hit, instead of testing all four extensions in both dirs — roughly halving the `file_exists()` calls per uncached request (the cross-dir combinations it dropped are structurally impossible in a real build).
 - **Privacy**: the cache profiler stores only the request **path** (query string stripped, length-capped), so visitor PII in query parameters is no longer written to the `enqueues_profile_data` option.
 - Documentation accuracy: corrected the stale "invalidated every 24 hours" caching docblocks (invalidation is by build signature + configurable TTL) and added `cache_mode` to the settings `@return` shape. Internal dedup: the three `single-*` asset resolvers share a `first_matching_asset()` helper, and `get_asset_page_type_file_data()`'s two branches share one asset-data builder (behaviour-identical).
+- **Base MVC**: `Application::setup_controllers()` now writes filtered controllers back to the controller list, so the `base_pre_*` / `base_post_*` controller filters actually work as swap points. Previously the `base_post_*` return values were discarded (dead assignments) and a `base_pre_controller_set_config` swap was applied inconsistently (used for config but not set-up). The deliberate two-phase order (all configs, then all set-ups) is preserved.
 
 ## [1.3.7] - 2026-05-19
 
