@@ -728,9 +728,21 @@ class BlockEditorRegistrationController extends Controller {
 
 			if ( $js_path ) {
 
-				$handle = ( 'view' === $context )
+				$default_handle = ( 'view' === $context )
 					? "{$block_editor_namespace}-{$foldername}-{$js_filetype}-script"
-					: "{$foldername}-{$js_filetype}";
+					: "{$block_editor_namespace}-{$foldername}-{$js_filetype}";
+
+				// The non-view JS handle was historically un-namespaced ({foldername}-{filetype}), which is
+				// collision-prone once this framework is vendored across sites/plugins; it is now namespaced
+				// to match the CSS + view-JS handles. Filterable so a site relying on the old bare handle
+				// can restore it.
+				$handle = apply_filters(
+					"enqueues_block_editor_js_handle_{$type}_{$foldername}",
+					$default_handle,
+					$context,
+					$foldername,
+					$type
+				);
 
 				$args = [
 					'strategy'  => 'async',

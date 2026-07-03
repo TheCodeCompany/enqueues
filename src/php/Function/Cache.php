@@ -270,7 +270,7 @@ function get_enqueues_build_signature(): string {
 	// change -- including a block-only deploy that leaves the main bundle byte-identical (the case a
 	// main-only signature missed and served a stale block ?ver). Content hashes are also immune to
 	// the git-checkout "mtime not bumped for unchanged files" problem.
-	$js_dir         = trim( (string) apply_filters( 'enqueues_theme_js_src_dir', 'dist/js' ), '/' );
+	$js_dir         = trim( enqueues_theme_js_dist_dir(), '/' );
 	$block_dist_dir = trim( get_block_editor_dist_dir(), '/' );
 
 	$globs = [

@@ -20,6 +20,8 @@ use function Enqueues\is_cache_enabled;
 use function Enqueues\is_profile_enabled;
 use function Enqueues\enqueues_profile_record;
 use function Enqueues\string_slugify;
+use function Enqueues\enqueues_theme_css_dist_dir;
+use function Enqueues\enqueues_theme_js_dist_dir;
 
 /**
  * Class responsible for enqueuing the theme's main stylesheet and scripts based on page type, template, or post type.
@@ -316,8 +318,8 @@ class EnqueueAssets {
 		}
 
 		$theme_directory = get_template_directory();
-		$css_dir         = '/' . ltrim( apply_filters( 'enqueues_theme_css_src_dir', 'dist/css' ), '/' );
-		$js_dir          = '/' . ltrim( apply_filters( 'enqueues_theme_js_src_dir', 'dist/js' ), '/' );
+		$css_dir         = '/' . ltrim( enqueues_theme_css_dist_dir(), '/' );
+		$js_dir          = '/' . ltrim( enqueues_theme_js_dist_dir(), '/' );
 
 		$css_path = asset_find_file_path( $css_dir, $asset_name, 'css', $theme_directory );
 		$js_path  = asset_find_file_path( $js_dir, $asset_name, 'js', $theme_directory );
@@ -606,14 +608,14 @@ class EnqueueAssets {
 		 *
 		 * @param string $theme_css_dist_dir The built CSS asset directory relative to the theme root directory.
 		 */
-		$theme_css_dist_dir = apply_filters( 'enqueues_theme_css_src_dir', 'dist/css' );
+		$theme_css_dist_dir = enqueues_theme_css_dist_dir();
 
 		/**
 		 * The built JS asset directory relative to the theme root directory.
 		 *
 		 * @param string $theme_js_dist_dir The built JS asset directory relative to the theme root directory.
 		 */
-		$theme_js_dist_dir = apply_filters( 'enqueues_theme_js_src_dir', 'dist/js' );
+		$theme_js_dist_dir = enqueues_theme_js_dist_dir();
 
 		// Each dist dir only ever holds its own asset type, so pair the dir with just its extensions
 		// (minified first) and stop at the first hit per file. This avoids the structurally-guaranteed

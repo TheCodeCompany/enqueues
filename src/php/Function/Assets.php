@@ -68,6 +68,33 @@ function asset_find_file_path( string $relative_path, string $file_name, string 
 }
 
 /**
+ * Resolves the compiled (dist) CSS directory, relative to the theme root.
+ *
+ * Canonical filter: `enqueues_theme_css_dist_dir` (default `dist/css`). Defaults from the legacy,
+ * misleadingly-named `enqueues_theme_css_src_dir` filter (which has always set this DIST path) so
+ * existing sites keep working; prefer the `_dist_dir` name.
+ *
+ * @return string The dist CSS directory (e.g. 'dist/css').
+ */
+function enqueues_theme_css_dist_dir(): string {
+	$legacy = (string) apply_filters( 'enqueues_theme_css_src_dir', 'dist/css' );
+	return (string) apply_filters( 'enqueues_theme_css_dist_dir', $legacy );
+}
+
+/**
+ * Resolves the compiled (dist) JS directory, relative to the theme root.
+ *
+ * Canonical filter: `enqueues_theme_js_dist_dir` (default `dist/js`). Defaults from the legacy
+ * `enqueues_theme_js_src_dir` filter for back-compat; prefer the `_dist_dir` name.
+ *
+ * @return string The dist JS directory (e.g. 'dist/js').
+ */
+function enqueues_theme_js_dist_dir(): string {
+	$legacy = (string) apply_filters( 'enqueues_theme_js_src_dir', 'dist/js' );
+	return (string) apply_filters( 'enqueues_theme_js_dist_dir', $legacy );
+}
+
+/**
  * Displays a warning if an asset is missing in a local development environment.
  *
  * Intended for use in local development environments to alert developers when an

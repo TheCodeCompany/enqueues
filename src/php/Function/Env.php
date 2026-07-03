@@ -56,7 +56,10 @@ function is_environment_match( $env ) {
 
 	$env_type = get_environment_type();
 
-	$environment_type_matches = apply_filters( "environment_type_matches_{$env}", [] );
+	$environment_type_matches = apply_filters( "enqueues_environment_type_matches_{$env}", [] );
+
+	// Deprecated unprefixed alias (global-namespace collision risk); prefer enqueues_environment_type_matches_{env}.
+	$environment_type_matches = apply_filters( "environment_type_matches_{$env}", $environment_type_matches );
 
 	if ( $environment_type_matches ) {
 
@@ -83,7 +86,10 @@ function is_environment_match( $env ) {
 
 	// Last resort, match the site url.
 	$site_url         = get_site_url();
-	$site_url_matches = apply_filters( "environment_site_url_partial_matches_{$env}", [] );
+	$site_url_matches = apply_filters( "enqueues_environment_site_url_partial_matches_{$env}", [] );
+
+	// Deprecated unprefixed alias; prefer enqueues_environment_site_url_partial_matches_{env}.
+	$site_url_matches = apply_filters( "environment_site_url_partial_matches_{$env}", $site_url_matches );
 
 	if ( $site_url_matches ) {
 

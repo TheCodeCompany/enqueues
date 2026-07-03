@@ -33,6 +33,10 @@ function string_slugify( $str = '', $glue = '-' ) {
 	 * @param string $raw  The original string.
 	 * @param string $glue The separator used to join the string into a slug.
 	 */
+	$slug = apply_filters( 'enqueues_string_slugify', $slug, $raw, $glue );
+
+	// Deprecated: the unprefixed `string_slugify` hook is global-namespaced and can collide with other
+	// plugins. Kept for back-compat (fires last so existing filters still win); prefer the prefixed name.
 	return apply_filters( 'string_slugify', $slug, $raw, $glue );
 }
 
@@ -58,5 +62,8 @@ function string_camelcaseify( $str = '' ) {
 	 * @param string $string_camelcase The newly created camelCased string.
 	 * @param string $raw              The original string.
 	 */
+	$string_camelcase = apply_filters( 'enqueues_string_camelcaseify', $string_camelcase, $raw );
+
+	// Deprecated unprefixed alias (global-namespace collision risk); prefer enqueues_string_camelcaseify.
 	return apply_filters( 'string_camelcaseify', $string_camelcase, $raw );
 }

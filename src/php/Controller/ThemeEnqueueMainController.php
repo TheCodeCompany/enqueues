@@ -88,6 +88,14 @@ class ThemeEnqueueMainController extends Controller {
 			$css_ver    = apply_filters( "enqueues_theme_css_version_{$css_data['handle']}", $css_data['ver'] );
 			$css_media  = apply_filters( "enqueues_theme_css_media_{$css_data['handle']}", 'all' );
 
+			// Style args, mirroring the JS enqueues_theme_js_args_{handle} filter. WordPress currently only
+			// supports 'media' for styles; the media filter above feeds the default for back-compat.
+			$css_args  = apply_filters(
+				"enqueues_theme_css_args_{$css_data['handle']}",
+				[ 'media' => $css_media ]
+			);
+			$css_media = ( is_array( $css_args ) && isset( $css_args['media'] ) ) ? $css_args['media'] : $css_media;
+
 			$register_style = apply_filters( "enqueues_theme_css_register_style_{$css_data['handle']}", true );
 			$enqueue_style  = apply_filters( "enqueues_theme_css_enqueue_style_{$css_data['handle']}", true );
 

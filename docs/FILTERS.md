@@ -28,8 +28,10 @@ This page lists **all** filters and actions available in the Enqueues MU Plugin,
 | `enqueues_theme_default_enqueue_asset_filename`        | Filter the default fallback asset filename (e.g., 'main').     | [Theme Asset Fallback](THEME-ASSETS.md#how-fallback-works) |
 | `enqueues_theme_allowed_page_types_and_templates`      | Filter allowed page types/templates for asset loading.          | [Theme Asset Loading](THEME-ASSETS.md#customizing-dependencies-localization-and-more) |
 | `enqueues_theme_skip_scan_directories`                | Filter directories to skip when scanning for assets.           | [Theme Asset Loading](THEME-ASSETS.md#customizing-dependencies-localization-and-more) |
-| `enqueues_theme_css_src_dir`                          | Filter the source directory for theme CSS assets.              | [Theme Asset Loading](THEME-ASSETS.md#customizing-dependencies-localization-and-more) |
-| `enqueues_theme_js_src_dir`                           | Filter the source directory for theme JS assets.               | [Theme Asset Loading](THEME-ASSETS.md#customizing-dependencies-localization-and-more) |
+| `enqueues_theme_css_dist_dir`                         | Filter the compiled (dist) directory for theme CSS assets. Default `dist/css`. | [Theme Asset Loading](THEME-ASSETS.md#customizing-dependencies-localization-and-more) |
+| `enqueues_theme_js_dist_dir`                          | Filter the compiled (dist) directory for theme JS assets. Default `dist/js`.   | [Theme Asset Loading](THEME-ASSETS.md#customizing-dependencies-localization-and-more) |
+| `enqueues_theme_css_src_dir`                          | **Deprecated** alias of `enqueues_theme_css_dist_dir` (it always set the dist dir). | [Theme Asset Loading](THEME-ASSETS.md#customizing-dependencies-localization-and-more) |
+| `enqueues_theme_js_src_dir`                           | **Deprecated** alias of `enqueues_theme_js_dist_dir`.                           | [Theme Asset Loading](THEME-ASSETS.md#customizing-dependencies-localization-and-more) |
 | `enqueues_theme_post_type_asset_remap`                | Remap post types for post-name, child, and post-type lookup precedence. | [Theme Asset Loading](THEME-ASSETS.md#post-type-remapping) |
 | `enqueues_theme_post_type_asset_candidates`           | Filter ordered post type candidates for post-name/child/post-type matching. | [Theme Asset Loading](THEME-ASSETS.md#post-type-remapping) |
 | `enqueues_render_css_inline`                          | Filter whether to render CSS inline (per handle).              | [Inline Asset Filters](INLINE-ASSETS.md#filters) |
@@ -69,6 +71,7 @@ This page lists **all** filters and actions available in the Enqueues MU Plugin,
 | `enqueues_block_editor_css_dependencies_{type}_{foldername}` | Filter dependencies for plugin/extension CSS.              | **Plugins/Extensions** | [Block Editor Filters](BLOCK-EDITOR.md#plugin-and-extension-filters) |
 | `enqueues_block_editor_css_version_{type}_{foldername}`  | Filter version for plugin/extension CSS.                      | **Plugins/Extensions** | [Block Editor Filters](BLOCK-EDITOR.md#plugin-and-extension-filters) |
 | `enqueues_block_editor_enqueue_style_{type}_{foldername}` | Enable/disable enqueue for plugin/extension CSS.             | **Plugins/Extensions** | [Block Editor Filters](BLOCK-EDITOR.md#plugin-and-extension-filters) |
+| `enqueues_block_editor_js_handle_{type}_{foldername}`    | Filter the plugin/extension JS handle (default is now namespaced to avoid collisions). | **Plugins/Extensions** | [Block Editor Filters](BLOCK-EDITOR.md#plugin-and-extension-filters) |
 | `enqueues_block_editor_js_args_{type}_{foldername}`      | Filter args for plugin/extension JS.                          | **Plugins/Extensions** | [Block Editor Filters](BLOCK-EDITOR.md#plugin-and-extension-filters) |
 | `enqueues_block_editor_js_register_script_{type}_{foldername}` | Enable/disable registration of plugin/extension JS.       | **Plugins/Extensions** | [Block Editor Filters](BLOCK-EDITOR.md#plugin-and-extension-filters) |
 | `enqueues_block_editor_js_dependencies_{type}_{foldername}` | Filter dependencies for plugin/extension JS.               | **Plugins/Extensions** | [Block Editor Filters](BLOCK-EDITOR.md#plugin-and-extension-filters) |
@@ -146,7 +149,10 @@ See [Performance: Asset Caching & the Settings Page](PERFORMANCE.md) for the ful
 
 | Filter/Action                      | Summary                                         | Docs                                         |
 |:-----------------------------------|:------------------------------------------------|:---------------------------------------------|
-| `string_camelcaseify`              | Filter the result of the camelcase utility.      | Internal/Advanced                            |
+| `enqueues_string_slugify`          | Filter the result of the slugify utility.        | Internal/Advanced                            |
+| `enqueues_string_camelcaseify`     | Filter the result of the camelcase utility.      | Internal/Advanced                            |
+| `string_slugify`                   | **Deprecated** unprefixed alias of `enqueues_string_slugify` (global-namespace collision risk). | Internal/Advanced |
+| `string_camelcaseify`              | **Deprecated** unprefixed alias of `enqueues_string_camelcaseify`. | Internal/Advanced          |
 
 ---
 
@@ -154,8 +160,10 @@ See [Performance: Asset Caching & the Settings Page](PERFORMANCE.md) for the ful
 
 | Filter/Action                      | Summary                                         | Docs                                         |
 |:-----------------------------------|:------------------------------------------------|:---------------------------------------------|
-| `environment_type_matches_{env}`   | Filter environment type matches.                 | Internal/Advanced                            |
-| `environment_site_url_partial_matches_{env}` | Filter environment site URL matches.         | Internal/Advanced                            |
+| `enqueues_environment_type_matches_{env}` | Filter environment type matches.          | Internal/Advanced                            |
+| `enqueues_environment_site_url_partial_matches_{env}` | Filter environment site URL matches. | Internal/Advanced                        |
+| `environment_type_matches_{env}`   | **Deprecated** unprefixed alias (global-namespace collision risk). | Internal/Advanced           |
+| `environment_site_url_partial_matches_{env}` | **Deprecated** unprefixed alias.       | Internal/Advanced                        |
 
 ---
 
