@@ -5,7 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.4.0] - 2026-06-04
+## [2.0.0] - Unreleased
+
+> Major version: this unreleased line began as the 1.4.0 cache feature but now also carries breaking
+> changes (the namespaced block-editor JS handle, hook renames/removals), so it releases as 2.0.0.
+
 
 ### Added
 - **FEATURE**: Asset caching with admin toggles and a Settings → Enqueues page
