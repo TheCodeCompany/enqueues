@@ -110,7 +110,7 @@ See [Performance: Asset Caching & the Settings Page](PERFORMANCE.md) for the ful
 | `enqueues_is_profile_enabled`      | Final say on whether the cache profiler is on. | [Performance](PERFORMANCE.md#the-cache-profiler) |
 | `enqueues_profile_log_max`         | The profiler ring-buffer size (10–200). | [Performance](PERFORMANCE.md#the-cache-profiler) |
 | `enqueues_settings_capability`     | Capability required for the Settings → Enqueues page (default `manage_options`). | [Performance](PERFORMANCE.md#the-settings-page) |
-| `enqueues_manifest_enabled`        | Enable/disable the build-time asset manifest (default true). | [Performance](PERFORMANCE.md#build-time-manifest-deploy-generated-fastest) |
+| `enqueues_manifest_enabled`        | Enable/disable the build-time asset manifest (defaults to the active cache mode — off in Off mode). | [Performance](PERFORMANCE.md#build-time-manifest-deploy-generated-fastest) |
 | `enqueues_manifest_path`           | Filter the absolute path to the manifest file. | [Performance](PERFORMANCE.md#build-time-manifest-deploy-generated-fastest) |
 | `enqueues_manifest_validate_signature` | Validate the manifest's build signature before use (default true). | [Performance](PERFORMANCE.md#build-time-manifest-deploy-generated-fastest) |
 | `enqueues_cache_flushed`           | Action fired after `flush_enqueues_cache()` completes. | [Performance](PERFORMANCE.md#constants-filters--functions) |

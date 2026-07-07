@@ -122,12 +122,13 @@ read one opcache-cached PHP file and never walk the theme tree or stat block ass
   writes `{theme}/dist/enqueues-manifest.php` (the template list + the current build signature).
 - **It supersedes the scan/transient** for `theme_template_files` and the block version map when
   present; everything else is unchanged.
-- **Safe by default**: ignored in local dev (`is_local()` — assets change live), and if its stamped
+- **Safe by default**: ignored in local dev (`is_local()` — assets change live), in the **Off** cache
+  mode (the manifest is an optimisation tier, so Off truly resolves every request), and if its stamped
   build signature no longer matches the current build (a deploy changed assets without rebuilding the
-  manifest) it is ignored and the runtime scan takes over. A stale manifest degrades to
-  correct-but-slower, never to stale output.
+  manifest). A stale manifest degrades to correct-but-slower, never to stale output.
 - **Opt-in per site**: with no manifest file the framework behaves exactly as before. Filters:
-  `enqueues_manifest_enabled` (default true), `enqueues_manifest_path`, and
+  `enqueues_manifest_enabled` (defaults to the active cache mode — on for Per-request/Persistent, off
+  for Off; return true/false to force), `enqueues_manifest_path`, and
   `enqueues_manifest_validate_signature` (default true — set false to skip the signature check for a
   little more speed on sites that always rebuild the manifest on deploy).
 - CLI: `wp enqueues manifest build | clear | status`.

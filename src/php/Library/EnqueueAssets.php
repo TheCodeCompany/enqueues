@@ -473,8 +473,10 @@ class EnqueueAssets {
 		$profile = is_profile_enabled();
 
 		// Build-time manifest (M0): a deploy-generated snapshot skips the scan and the transient entirely.
+		// Only when scanning the actual template directory — the manifest is keyed to get_template_directory(),
+		// so it must not be served for a different directory passed in.
 		$manifest_t0        = $profile ? hrtime( true ) : 0;
-		$manifest_templates = enqueues_manifest_get( 'templates' );
+		$manifest_templates = ( $theme_directory === get_template_directory() ) ? enqueues_manifest_get( 'templates' ) : null;
 		if ( is_array( $manifest_templates ) ) {
 			if ( $profile ) {
 				enqueues_profile_record( 'theme_template_files', 'hit', (int) ( hrtime( true ) - $manifest_t0 ) );

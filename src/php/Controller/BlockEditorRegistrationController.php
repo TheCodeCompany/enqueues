@@ -404,6 +404,12 @@ class BlockEditorRegistrationController extends Controller {
 				continue;
 			}
 
+			// Skip blocks the runtime resolves from their own block.json version — get_block_asset_version()
+			// is never called for them, so a manifest entry would be unused.
+			if ( $this->should_use_block_json_version( (string) $metadata['name'], $metadata ) ) {
+				continue;
+			}
+
 			$block_parts        = explode( '/', (string) $metadata['name'] );
 			$block_slug         = end( $block_parts );
 			$map[ $block_slug ] = $this->compute_block_version( $block_slug, $metadata );
