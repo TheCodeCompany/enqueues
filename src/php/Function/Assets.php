@@ -347,8 +347,9 @@ function render_asset_inline( $asset ) {
 		return;
 	}
 
-	// Use version if available.
-	$url        = $ver ? "{$url}?ver={$ver}" : $url;
+	// Use version if available. Shared with prime_inline_asset_caches() so the
+	// cache key and the fetched URL cannot diverge.
+	$url        = inline_asset_url( $asset );
 	$element_id = $ver ? "{$handle}-{$ver}" : $handle;
 
 	$content = fetch_asset_file_contents( $url, $file );
@@ -374,6 +375,88 @@ function render_asset_inline( $asset ) {
 }
 
 /**
+ * The versioned URL an inline asset is fetched and cached under.
+ *
+ * Extracted so the cache key cannot drift from the URL actually requested. `render_asset_inline()`
+ * appends `?ver=` before fetching, so a primer that skipped that would build a different key and
+ * prime nothing.
+ *
+ * @param array $asset Asset definition.
+ *
+ * @return string Versioned URL, or an empty string when the asset is unusable.
+ */
+function inline_asset_url( array $asset ): string {
+	$url = $asset['url'] ?? '';
+	$ver = $asset['ver'] ?? '';
+
+	if ( ! $url || ! ( $asset['type'] ?? '' ) || ! ( $asset['handle'] ?? '' ) ) {
+		return '';
+	}
+
+	return $ver ? "{$url}?ver={$ver}" : $url;
+}
+
+/**
+ * Transient key for one inline asset URL.
+ *
+ * @param string $url Versioned asset URL.
+ *
+ * @return string
+ */
+function inline_asset_transient_key( string $url ): string {
+	return 'inline_asset_' . md5( $url );
+}
+
+/**
+ * Prime the transient option caches for a batch of inline assets in one query.
+ *
+ * `fetch_asset_file_contents()` calls `get_transient()` per asset, and without a persistent object
+ * cache each of those is its own option lookup: measured 27 duplicate queries across ten page types
+ * on a consuming site, one per inlined asset. Priming the whole batch first collapses them into a
+ * single query.
+ *
+ * Only helps where transients live in the options table. With a persistent object cache in place
+ * transients bypass options entirely, so this is a no-op there rather than a saving -- which makes
+ * it a local and staging win, and harmless in production either way.
+ *
+ * Requires `wp_prime_option_caches()` (WordPress 6.4+); older versions simply skip the prime and
+ * behave exactly as before.
+ *
+ * @param array $assets Asset definitions, as passed to render_asset_inline().
+ *
+ * @return void
+ */
+function prime_inline_asset_caches( array $assets ): void {
+	if ( ! function_exists( 'wp_prime_option_caches' ) ) {
+		return;
+	}
+
+	$options = [];
+
+	foreach ( $assets as $asset ) {
+		if ( ! is_array( $asset ) ) {
+			continue;
+		}
+
+		$url = inline_asset_url( $asset );
+
+		if ( ! $url ) {
+			continue;
+		}
+
+		$key = inline_asset_transient_key( $url );
+
+		// get_transient() reads the timeout first, then the value.
+		$options[] = "_transient_timeout_{$key}";
+		$options[] = "_transient_{$key}";
+	}
+
+	if ( $options ) {
+		wp_prime_option_caches( array_unique( $options ) );
+	}
+}
+
+/**
  * Fetches the content of an asset from a given URL.
  *
  * Implements transient caching and soft error handling to optimize performance and user experience.
@@ -385,7 +468,7 @@ function render_asset_inline( $asset ) {
  */
 function fetch_asset_file_contents( string $url, string $file = '' ): false|string {
 
-	$transient_key = 'inline_asset_' . md5( $url );
+	$transient_key = inline_asset_transient_key( $url );
 	$transient_ttl = DAY_IN_SECONDS;
 	$content       = get_transient( $transient_key );
 

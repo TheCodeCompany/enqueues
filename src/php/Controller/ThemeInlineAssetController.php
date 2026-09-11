@@ -14,6 +14,7 @@
 namespace Enqueues\Controller;
 
 use Enqueues\Base\Main\Controller;
+use function Enqueues\prime_inline_asset_caches;
 use function Enqueues\render_asset_inline;
 
 /**
@@ -58,6 +59,9 @@ class ThemeInlineAssetController extends Controller {
 			return;
 		}
 
+		// One query for the whole batch instead of a transient read per asset.
+		prime_inline_asset_caches( $assets );
+
 		foreach ( $assets as $asset ) {
 			render_asset_inline( $asset );
 		}
@@ -82,6 +86,9 @@ class ThemeInlineAssetController extends Controller {
 		if ( ! $assets ) {
 			return;
 		}
+
+		// One query for the whole batch instead of a transient read per asset.
+		prime_inline_asset_caches( $assets );
 
 		foreach ( $assets as $asset ) {
 			render_asset_inline( $asset );
